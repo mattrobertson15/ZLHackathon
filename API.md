@@ -12,6 +12,7 @@ The API supports:
 * Viewing analytics
 * Viewing mock alerts
 * Generating AI safety summaries
+* Frontend-generated markdown safety report downloads from dashboard and summaries
 
 Base URL
 
@@ -30,6 +31,14 @@ Note: the `/uploads` path is reserved for the upload API resource
 routing collisions between the resource path and static file serving,
 uploaded files are served from `/media/{fileName}` instead. `fileUrl` in
 upload responses reflects this, e.g. `/media/warehouse-floor.jpg`.
+
+When the backend is deployed to Vercel with `BLOB_READ_WRITE_TOKEN` set,
+uploads go to Vercel Blob instead (Vercel's function filesystem is ephemeral,
+so local disk can't be trusted to survive between requests). In that case
+`fileUrl` is an absolute Vercel Blob CDN URL instead of a `/media/...` path —
+clients should use `fileUrl` as-is rather than assuming it's always relative
+to the API base URL. See [ARCHITECTURE.md](ARCHITECTURE.md#static-file-serving)
+for details.
 
 Core Resources
 
@@ -528,15 +537,10 @@ Response
     "period": "weekly",
     "startDate": "2026-06-22",
     "endDate": "2026-06-28",
-    "compliancePercentage": 87,
-    "totalViolations": 32,
-    "topViolationTypes": ["no_vest", "no_helmet"],
-    "summaryText": "This week, Safety Sentinel analyzed 248 visual safety observations. Overall PPE compliance was 87%. The most common issue was missing safety vests, followed by missing helmets.",
-    "recommendedActions": [
-      "Reinforce vest requirements during pre-shift briefings.",
-      "Review PPE signage near high-traffic work zones.",
-      "Route high-severity helmet violations for supervisor review."
-    ],
+    "executiveSummary": "This week, Safety Sentinel analyzed 248 visual safety observations. Overall PPE compliance was 87%. The most common issue was missing safety vests, followed by missing helmets.",
+    "topViolations": "Missing safety vests were the most common issue, followed by missing helmets.",
+    "trendAnalysis": "Compliance was stable compared with the previous period.",
+    "recommendedActions": "Reinforce vest requirements during pre-shift briefings.\nReview PPE signage near high-traffic work zones.\nRoute high-severity helmet violations for supervisor review.",
     "createdAt": "2026-06-27T15:00:00Z"
   }
 }
@@ -559,14 +563,10 @@ Response
       "period": "weekly",
       "startDate": "2026-06-22",
       "endDate": "2026-06-28",
-      "compliancePercentage": 87,
-      "totalViolations": 32,
-      "topViolationTypes": ["no_vest", "no_helmet"],
-      "summaryText": "This week, Safety Sentinel analyzed 248 visual safety observations...",
-      "recommendedActions": [
-        "Reinforce vest requirements during pre-shift briefings.",
-        "Review PPE signage near high-traffic work zones."
-      ],
+      "executiveSummary": "This week, Safety Sentinel analyzed 248 visual safety observations...",
+      "topViolations": "Missing safety vests were the most common issue, followed by missing helmets.",
+      "trendAnalysis": "Compliance was stable compared with the previous period.",
+      "recommendedActions": "Reinforce vest requirements during pre-shift briefings.\nReview PPE signage near high-traffic work zones.",
       "createdAt": "2026-06-27T15:00:00Z"
     }
   ]
@@ -584,17 +584,25 @@ Response
     "period": "weekly",
     "startDate": "2026-06-22",
     "endDate": "2026-06-28",
-    "compliancePercentage": 87,
-    "totalViolations": 32,
-    "topViolationTypes": ["no_vest", "no_helmet"],
-    "summaryText": "This week, Safety Sentinel analyzed 248 visual safety observations...",
-    "recommendedActions": [
-      "Reinforce vest requirements during pre-shift briefings.",
-      "Review PPE signage near high-traffic work zones."
-    ],
+    "executiveSummary": "This week, Safety Sentinel analyzed 248 visual safety observations...",
+    "topViolations": "Missing safety vests were the most common issue, followed by missing helmets.",
+    "trendAnalysis": "Compliance was stable compared with the previous period.",
+    "recommendedActions": "Reinforce vest requirements during pre-shift briefings.\nReview PPE signage near high-traffic work zones.",
     "createdAt": "2026-06-27T15:00:00Z"
   }
 }
+
+Report Downloads
+
+The current MVP exports reports in the frontend without a dedicated backend
+endpoint. The Dashboard page builds a markdown report from `GET
+/analytics/overview` and `GET /analytics/trends`; the Summaries page builds a
+markdown report from each `SafetySummary` returned by `GET /summaries` or `POST
+/summaries/generate`.
+
+Downloaded files use the `.md` extension and include manager-ready narrative
+sections or dashboard KPI tables. A future backend endpoint could add signed PDF
+generation, but that is intentionally out of scope for the hackathon MVP.
 
 Suggested MVP Endpoint Priority
 

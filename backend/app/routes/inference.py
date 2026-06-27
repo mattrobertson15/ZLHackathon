@@ -17,7 +17,7 @@ from app.db.repositories import (
 from app.models.alert_record import AlertRecord
 from app.models.detection_result import DetectionResult
 from app.models.safety_event import SafetyEvent
-from app.services import alert_service, rule_engine, vision_service
+from app.services import alert_service, blob_service, rule_engine, vision_service
 from app.services.detection_parser import normalize_detections
 from app.utils.timestamps import to_iso
 from app.utils.video_frames import extract_frames
@@ -119,7 +119,16 @@ def _serialize_comparison(upload_id: str, comparison: dict) -> dict:
     }
 
 
-def _resolve_disk_path(file_url: str) -> str:
+def _resolve_disk_path(upload_id: str, file_url: str) -> str:
+    if file_url.startswith("http://") or file_url.startswith("https://"):
+        # Blob-backed upload: pull it down to local scratch space for this
+        # request since vision/frame-extraction libraries need a file path.
+        ext = os.path.splitext(file_url.split("?")[0])[1]
+        local_path = os.path.join(UPLOAD_STORAGE_PATH, f"{upload_id}{ext}")
+        with open(local_path, "wb") as out_file:
+            out_file.write(blob_service.download_blob(file_url))
+        return local_path
+
     stored_name = file_url.removeprefix("/media/")
     return os.path.join(UPLOAD_STORAGE_PATH, stored_name)
 
@@ -146,7 +155,7 @@ def analyze_upload(upload_id: str, request: AnalyzeRequest, db: Session = Depend
     update_upload_status(db, upload_id, "processing")
 
     try:
-        disk_path = _resolve_disk_path(upload.file_url)
+        disk_path = _resolve_disk_path(upload_id, upload.file_url)
         if upload.file_type == "image":
             frames = [{"path": disk_path, "frameTimestamp": None}]
         else:

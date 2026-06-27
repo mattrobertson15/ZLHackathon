@@ -15,6 +15,15 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   (process.env.NODE_ENV === "production" ? "/_/backend" : "http://localhost:8000");
 
+// Upload media is served either as an absolute Vercel Blob URL or as a
+// "/media/..." path relative to the backend, depending on storage backend.
+export function resolveMediaUrl(fileUrl: string): string {
+  if (/^https?:\/\//.test(fileUrl)) {
+    return fileUrl;
+  }
+  return `${API_BASE_URL}${fileUrl}`;
+}
+
 async function apiCall<T>(
   endpoint: string,
   options: RequestInit = {}

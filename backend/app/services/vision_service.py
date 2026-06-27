@@ -10,7 +10,7 @@ import random
 import requests
 from typing import Literal, Optional, TypedDict
 
-from app.config import QWEN_API_KEY, ROBOFLOW_API_KEY
+from app.config import QWEN_API_KEY, QWEN_BASE_URL, QWEN_MODEL, ROBOFLOW_API_KEY
 
 PPE_LABELS = ["person", "helmet", "no_helmet", "vest", "no_vest"]
 ModelProvider = Literal["auto", "roboflow", "qwen_vision", "manual_mock"]
@@ -51,7 +51,7 @@ def run_inference(
         except Exception as e:
             print(f"Warning: Roboflow inference failed: {e}")
 
-    if QWEN_API_KEY:
+    if QWEN_API_KEY and QWEN_BASE_URL:
         try:
             return _call_qwen_vision(frames), "qwen_vision"
         except Exception as e:
@@ -151,7 +151,7 @@ def compare_detection_sets(
 
 def _run_provider_for_comparison(frames: list[dict], provider: ModelProvider) -> dict:
     configured = (provider == "roboflow" and bool(ROBOFLOW_API_KEY)) or (
-        provider == "qwen_vision" and bool(QWEN_API_KEY)
+        provider == "qwen_vision" and bool(QWEN_API_KEY) and bool(QWEN_BASE_URL)
     )
     source_name = provider
     if not configured:
@@ -234,21 +234,24 @@ def _call_qwen_vision(frames: list[dict]) -> list[RawDetection]:
 
 
 def _analyze_frame_with_qwen(image_path: str, frame_timestamp: Optional[float]) -> list[RawDetection]:
-    """Analyze a single frame with Qwen3-VL30B API."""
+    """Analyze a single frame via a Nebius-hosted Qwen-VL model (OpenAI-compatible API)."""
     with open(image_path, "rb") as f:
         image_data = base64.standard_b64encode(f.read()).decode("utf-8")
 
-    url = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-image-understanding/image-understanding"
+    if not QWEN_BASE_URL:
+        raise ValueError("QWEN_BASE_URL not set in environment")
+
+    url = f"{QWEN_BASE_URL}/chat/completions"
 
     payload = {
-        "model": "qwen-vl-plus",
+        "model": QWEN_MODEL,
         "messages": [
             {
                 "role": "user",
                 "content": [
                     {
-                        "type": "image",
-                        "image": f"data:image/jpeg;base64,{image_data}",
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{image_data}"},
                     },
                     {
                         "type": "text",
@@ -281,12 +284,28 @@ def _analyze_frame_with_qwen(image_path: str, frame_timestamp: Optional[float]) 
     return detections
 
 
+def _normalize_bbox(bbox) -> Optional[dict]:
+    """Qwen isn't given a strict output schema, so bounding_box may arrive as
+    a dict ({"x", "y", "width", "height"}) or a plain [x, y, width, height] list."""
+    if isinstance(bbox, dict):
+        return {
+            "x": int(bbox.get("x", 0)),
+            "y": int(bbox.get("y", 0)),
+            "width": int(bbox.get("width", 100)),
+            "height": int(bbox.get("height", 100)),
+        }
+    if isinstance(bbox, (list, tuple)) and len(bbox) == 4:
+        x, y, width, height = bbox
+        return {"x": int(x), "y": int(y), "width": int(width), "height": int(height)}
+    return None
+
+
 def _parse_qwen_response(response: dict, frame_timestamp: Optional[float]) -> list[RawDetection]:
     """Parse Qwen API response and extract detections matching PPE_LABELS."""
     detections: list[RawDetection] = []
 
     try:
-        content = response.get("output", {}).get("choices", [{}])[0].get("message", {}).get("content", "")
+        content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
 
         # Try to extract JSON from response
         import json
@@ -299,16 +318,11 @@ def _parse_qwen_response(response: dict, frame_timestamp: Optional[float]) -> li
             for detection in raw_detections:
                 label = detection.get("label", "").lower()
                 if label in PPE_LABELS:
-                    bbox = detection.get("bounding_box", {})
+                    bbox = detection.get("bounding_box")
                     detections.append({
                         "label": label,
                         "confidence": float(detection.get("confidence", 0.5)),
-                        "boundingBox": {
-                            "x": int(bbox.get("x", 0)),
-                            "y": int(bbox.get("y", 0)),
-                            "width": int(bbox.get("width", 100)),
-                            "height": int(bbox.get("height", 100)),
-                        } if bbox else None,
+                        "boundingBox": _normalize_bbox(bbox),
                         "frameTimestamp": frame_timestamp,
                     })
     except Exception as e:

@@ -78,6 +78,7 @@ Frontend Responsibilities
 * Display event logs
 * Display mock alerts
 * Request AI summaries
+* Export markdown safety reports from dashboard metrics and generated summaries
 * Visualize trends using Recharts
 * Load the built-in warehouse shift demo scenario for reliable product walkthroughs
 
@@ -149,9 +150,17 @@ Default `modelProvider: "auto"` priority (first available wins):
    - Source: "roboflow"
    - Implementation: `app/services/roboflow_service.py`
 
-2. **Qwen Vision** (if `QWEN_API_KEY` is set)
-   - Real Qwen client via `dashscope.aliyuncs.com`
+2. **Qwen Vision** (if `QWEN_API_KEY` and `QWEN_BASE_URL` are set)
+   - Self-hosted Qwen3-VL model served behind a Nebius AI Studio instance,
+     called via its OpenAI-compatible `/chat/completions` endpoint
+   - Env vars: `QWEN_API_KEY` (bearer token), `QWEN_BASE_URL` (instance base
+     URL, e.g. `http://<host>:8080/v1`), `QWEN_MODEL` (defaults to
+     `Qwen/Qwen3-VL-30B-A3B-Instruct-FP8` — must match an id returned by the
+     instance's `/v1/models`, including the `Qwen/` prefix)
    - Experimental structured output for person, helmet, no_helmet, vest, no_vest
+   - The endpoint doesn't enforce a response schema, so `bounding_box` can come
+     back as either a `{x, y, width, height}` object or a `[x, y, width, height]`
+     array; `_normalize_bbox()` in `vision_service.py` handles both
    - Source: "qwen_vision"
    - Best used as a comparison or explanation path, not the primary operational detector
 
@@ -386,11 +395,33 @@ Summary Output
 Claude should produce:
 
 * Executive summary
-* Key observations
 * Top violation types
 * Trend interpretation
 * Recommended corrective actions
 * Coaching-oriented safety reminders
+
+Current implementation stores the generated report as `executiveSummary`,
+`topViolations`, `trendAnalysis`, and `recommendedActions` fields on the
+`summaries` table. `POST /summaries/generate` and `GET /summaries/{summary_id}`
+return a `{ "summary": ... }` envelope; `GET /summaries` returns
+`{ "summaries": [...] }`.
+
+11. Exportable Safety Reports
+
+The MVP exports manager-ready markdown reports entirely in the frontend via
+`frontend/lib/report.ts`.
+
+Report types:
+
+* Dashboard report: compliance percentage, total observations, violations,
+  pending reviews, violation breakdown, severity breakdown, and daily trend
+  table.
+* Summary report: reporting period, generated timestamp, executive summary, top
+  violations, trend analysis, and recommended actions.
+
+This avoids adding a backend report-generation surface while still giving
+managers a portable artifact they can open, share, or print. PDF generation is a
+future enhancement.
 
 Backend Folder Structure
 
@@ -404,7 +435,7 @@ backend/
       events.py          [done]
       analytics.py        [done]
       alerts.py           [done]
-      summaries.py        [pending: Phase 7]
+      summaries.py        [done]
     services/
       vision_service.py   [done — Roboflow-first auto routing, Qwen comparison, mock fallback]
       detection_parser.py [done]
@@ -412,13 +443,13 @@ backend/
       media_service.py     [pending: not yet broken out, frame extraction lives in utils/video_frames.py]
       analytics_service.py [done]
       alert_service.py     [done]
-      summary_service.py   [pending: Phase 7]
+      summary_service.py   [done]
     models/
       upload.py          [done]
       detection_result.py [done]
       safety_event.py     [done]
       alert_record.py      [done]
-      safety_summary.py    [pending: Phase 7]
+      summary.py           [done]
     db/
       database.py
       repositories.py
@@ -459,6 +490,7 @@ frontend/
   lib/
     api.ts
     types.ts
+    report.ts
     chart-utils.ts
 
 Processing Flow
@@ -508,6 +540,24 @@ This is a separate path from the /uploads API resource (POST /uploads, GET
 /uploads, GET /uploads/{upload_id}) to avoid routing collisions between the
 REST resource and static file serving.
 
+On Vercel, UPLOAD_STORAGE_PATH resolves to /tmp, which is ephemeral per
+function invocation and not shared across instances. A file written during
+upload can disappear before a later request reads it back. To keep the
+deployed demo working, the backend uploads to Vercel Blob instead whenever
+`VERCEL=1` and `BLOB_READ_WRITE_TOKEN` is set (see `USE_BLOB_STORAGE` in
+`backend/app/config.py`): `Upload.file_url` becomes the public Blob CDN URL
+returned by the upload, rather than a `/media/...` path, and the frontend
+(`resolveMediaUrl` in `frontend/lib/api.ts`) renders that URL directly instead
+of prefixing it with the API base URL. There is no official Vercel Blob
+Python SDK, so `backend/app/services/blob_service.py` calls the same REST
+endpoint (`https://vercel.com/api/blob`) the JS SDK uses, for `put` (upload)
+and a plain `GET` for download. When inference needs a local file path (image
+analysis, video frame extraction), the upload route downloads the blob back
+into `UPLOAD_STORAGE_PATH` as a scratch copy for that request only — this
+ephemeral re-download is fine since it doesn't need to persist past the
+request. In local development (no `VERCEL` env var), uploads still go straight
+to local disk under `./uploads`.
+
 Data Storage Options
 
 For hackathon speed, use one of these paths:
@@ -532,30 +582,30 @@ Environment Variables
 
 # Backend
 ANTHROPIC_API_KEY=your_anthropic_key_here
-QWEN_API_KEY=your_qwen_key_here
+QWEN_API_KEY=your_nebius_bearer_token_here
+QWEN_BASE_URL=http://<nebius-instance-host>:8080/v1
+QWEN_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct-FP8
 ROBOFLOW_API_KEY=your_roboflow_key_here
 # Storage
 UPLOAD_STORAGE_PATH=./uploads
 DATABASE_URL=sqlite:///./safety_sentinel.db
+# Vercel Blob (only used when VERCEL=1; falls back to local disk otherwise)
+BLOB_READ_WRITE_TOKEN=your_vercel_blob_rw_token_here
 # Frontend
 NEXT_PUBLIC_API_URL=http://localhost:8000
 
 Note: API keys can be omitted individually. The default `auto` provider tries
 Roboflow first, then Qwen, then deterministic mock detections. Roboflow requires
 an API key to `serverless.roboflow.com` for the
-personal-protective-equipment-combined-model/8.
+personal-protective-equipment-combined-model/8. Qwen requires both
+`QWEN_API_KEY` and `QWEN_BASE_URL` to be considered configured.
 
-`inference-sdk` (the Roboflow client) unconditionally depends on `supervision`
-(pulls in matplotlib + scipy, ~125MB installed) and `opencv-python` (the GUI/Qt
-build, which can fail to import on minimal Linux runtimes missing `libGL`),
-even though this project only calls `client.infer()` with a single image path —
-a code path that never touches either package's actual functionality. Vercel's
-Python function has a 500MB size cap, and the real dependency tree blew past it.
-`backend/vendor/supervision_stub` and `backend/vendor/opencv_python_stub` are
-minimal local packages that satisfy pip's dependency resolution for those two
-names without installing the real heavy/GUI packages; `opencv-python-headless`
-(already a direct dependency) remains the sole real provider of `cv2`. See
-`backend/requirements.txt` for how they're wired in.
+The Roboflow integration calls the hosted REST API directly with `requests`.
+This avoids the `inference-sdk` dependency tree, which pulls in large packages
+such as `supervision`, `matplotlib`, `scipy`, and the GUI `opencv-python`
+package. The backend keeps `opencv-python-headless` as the only OpenCV
+dependency for video frame extraction, which keeps Vercel's Python function
+bundle smaller and avoids local path dependency resolution during deploy.
 
 Vercel deployment uses the root `vercel.json` services config:
 

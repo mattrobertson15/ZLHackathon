@@ -4,10 +4,11 @@ import shutil
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from app.config import UPLOAD_STORAGE_PATH
+from app.config import UPLOAD_STORAGE_PATH, USE_BLOB_STORAGE
 from app.db.database import get_db
 from app.db.repositories import create_upload, get_upload, list_uploads
 from app.models.upload import Upload
+from app.services import blob_service
 from app.utils.ids import generate_id
 from app.utils.timestamps import now_utc, to_iso
 
@@ -63,16 +64,22 @@ def upload_file(
     upload_id = generate_id("upl")
     ext = os.path.splitext(file.filename)[1].lower()
     stored_name = f"{upload_id}{ext}"
-    stored_path = os.path.join(UPLOAD_STORAGE_PATH, stored_name)
 
-    with open(stored_path, "wb") as out_file:
-        shutil.copyfileobj(file.file, out_file)
+    if USE_BLOB_STORAGE:
+        file_url = blob_service.upload_blob(
+            stored_name, file.file.read(), content_type=file.content_type
+        )
+    else:
+        stored_path = os.path.join(UPLOAD_STORAGE_PATH, stored_name)
+        with open(stored_path, "wb") as out_file:
+            shutil.copyfileobj(file.file, out_file)
+        file_url = f"/media/{stored_name}"
 
     upload = Upload(
         id=upload_id,
         file_name=file.filename,
         file_type=file_type,
-        file_url=f"/media/{stored_name}",
+        file_url=file_url,
         location_label=locationLabel,
         notes=notes,
         status="uploaded",

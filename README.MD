@@ -92,6 +92,7 @@ Initial dashboard metrics:
 * Compliance trend over time
 * Positive safety observations
 * Daily, weekly, and monthly summary cards
+* Downloadable markdown safety reports for manager review
 
 AI-Generated Safety Summaries
 
@@ -107,6 +108,12 @@ Example outputs:
 * Coaching-focused safety reminders
 
 The goal is to help teams understand not only what happened, but what to do next.
+
+Exportable Safety Reports
+
+Dashboard metrics and generated summaries can be downloaded as simple markdown
+reports. These exports give supervisors a portable, manager-ready artifact for
+shift recaps, compliance reviews, or follow-up coaching conversations.
 
 Mock Alert Center
 
@@ -169,6 +176,7 @@ Included in MVP
 * View violation type breakdown
 * View trends over time
 * Generate AI safety summaries
+* Download markdown safety reports
 * Display mock alerts in an alert center
 
 Not Included in MVP

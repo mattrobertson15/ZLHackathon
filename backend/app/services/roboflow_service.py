@@ -4,13 +4,16 @@ Uses the hosted Roboflow PPE combined model for object detection.
 Model: personal-protective-equipment-combined-model/8
 Detects: helmet, no_helmet, vest, no_vest, and people.
 """
+import base64
 from typing import Optional, TypedDict
-from inference_sdk import InferenceHTTPClient
+
+import requests
 
 from app.config import ROBOFLOW_API_KEY
 
 ROBOFLOW_MODEL_ID = "personal-protective-equipment-combined-model/8"
 ROBOFLOW_API_URL = "https://serverless.roboflow.com"
+ROBOFLOW_TIMEOUT_SECONDS = 45
 
 
 class RawDetection(TypedDict):
@@ -30,17 +33,12 @@ def run_roboflow_inference(frames: list[dict]) -> list[RawDetection]:
     if not ROBOFLOW_API_KEY:
         raise ValueError("ROBOFLOW_API_KEY not set in environment")
 
-    client = InferenceHTTPClient(
-        api_url=ROBOFLOW_API_URL,
-        api_key=ROBOFLOW_API_KEY
-    )
-
     detections: list[RawDetection] = []
 
     for frame in frames:
         try:
             frame_detections = _analyze_frame_with_roboflow(
-                client, frame["path"], frame.get("frameTimestamp")
+                frame["path"], frame.get("frameTimestamp")
             )
             detections.extend(frame_detections)
         except Exception as e:
@@ -51,13 +49,32 @@ def run_roboflow_inference(frames: list[dict]) -> list[RawDetection]:
 
 
 def _analyze_frame_with_roboflow(
-    client: InferenceHTTPClient,
     image_path: str,
     frame_timestamp: Optional[float]
 ) -> list[RawDetection]:
     """Analyze a single frame with Roboflow API."""
-    result = client.infer(image_path, model_id=ROBOFLOW_MODEL_ID)
+    result = _post_image_to_roboflow(image_path)
     return _parse_roboflow_response(result, frame_timestamp)
+
+
+def _post_image_to_roboflow(image_path: str) -> dict:
+    """Post a base64-encoded image to Roboflow's hosted REST API."""
+    with open(image_path, "rb") as image_file:
+        encoded_image = base64.b64encode(image_file.read()).decode("utf-8")
+
+    response = requests.post(
+        f"{ROBOFLOW_API_URL}/{ROBOFLOW_MODEL_ID}",
+        params={
+            "api_key": ROBOFLOW_API_KEY,
+            "format": "json",
+            "image_type": "base64",
+        },
+        data=encoded_image,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=ROBOFLOW_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    return response.json()
 
 
 def _parse_roboflow_response(

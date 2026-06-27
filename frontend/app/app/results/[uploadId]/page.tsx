@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getUpload, getDetections } from "@/lib/api";
+import { getUpload, getDetections, resolveMediaUrl } from "@/lib/api";
 import { Upload, Detection } from "@/lib/types";
 import DetectionViewer from "@/components/DetectionViewer";
 
@@ -116,7 +116,7 @@ export default function ResultsPage({ params }: { params: Promise<{ uploadId: st
           {upload.fileType === "image" && (
             <div className="mt-6">
               <img
-                src={`http://localhost:8000${upload.fileUrl}`}
+                src={resolveMediaUrl(upload.fileUrl)}
                 alt={upload.fileName}
                 className="max-w-full h-auto rounded-lg border border-gray-200"
               />

@@ -59,6 +59,7 @@ Show:
 * Compliance trend over time
 * Recent safety events
 * Recent mock alerts
+* Download Report button for a manager-ready markdown dashboard export
 
 Suggested narration:
 
@@ -172,10 +173,15 @@ Step 9: Generate AI Safety Summary
 Navigate to the summaries page.
 
 Generate a daily, weekly, or monthly summary.
+Open or download the generated report.
 
 Suggested narration:
 
 Finally, Safety Sentinel uses an LLM to convert the event data into a readable safety summary. This gives managers an immediate explanation of what happened, what changed, and what actions they should take next.
+
+The summary can also be downloaded as a markdown safety report, so a supervisor
+can attach it to a shift recap, print it, or share it with operations leadership
+without needing to keep the dashboard open.
 
 Example summary:
 
@@ -221,6 +227,7 @@ MVP Includes
 * Dashboard metrics
 * Mock alerts
 * AI-generated summaries
+* Exportable markdown safety reports
 
 MVP Does Not Include
 

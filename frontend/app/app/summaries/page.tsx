@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { generateSummary, listSummaries } from "@/lib/api";
 import { SafetySummary } from "@/lib/types";
+import { buildSummaryReport, downloadMarkdownReport } from "@/lib/report";
 import SummaryCard from "@/components/SummaryCard";
 
 type PeriodType = "daily" | "weekly" | "monthly";
@@ -65,6 +66,11 @@ export default function SummariesPage() {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleDownloadSummary = (summary: SafetySummary) => {
+    const report = buildSummaryReport(summary);
+    downloadMarkdownReport(report.markdown, report.fileName);
   };
 
   return (
@@ -190,7 +196,12 @@ export default function SummariesPage() {
             ) : (
               <div className="space-y-4">
                 {summaries.map((summary) => (
-                  <SummaryCard key={summary.id} summary={summary} onSelect={setSelectedSummary} />
+                  <SummaryCard
+                    key={summary.id}
+                    summary={summary}
+                    onSelect={setSelectedSummary}
+                    onDownload={handleDownloadSummary}
+                  />
                 ))}
               </div>
             )}
@@ -264,12 +275,20 @@ export default function SummariesPage() {
                 </p>
               </div>
 
-              <button
-                onClick={() => setSelectedSummary(null)}
-                className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-              >
-                Close
-              </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  onClick={() => handleDownloadSummary(selectedSummary)}
+                  className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
+                >
+                  Download Report
+                </button>
+                <button
+                  onClick={() => setSelectedSummary(null)}
+                  className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
