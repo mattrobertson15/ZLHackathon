@@ -1,9 +1,0 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "opencv-python"
-version = "4.10.0.84"
-description = "Stub satisfying inference-sdk's unconditional opencv-python dependency; this project uses opencv-python-headless instead"
-requires-python = ">=3.8"

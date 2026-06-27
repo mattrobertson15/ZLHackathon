@@ -612,6 +612,9 @@ such as `supervision`, `matplotlib`, `scipy`, and the GUI `opencv-python`
 package. The backend keeps `opencv-python-headless` as the only OpenCV
 dependency for video frame extraction, which keeps Vercel's Python function
 bundle smaller and avoids local path dependency resolution during deploy.
+Do not add local path package dependencies (for example `./vendor/...`) to
+`backend/requirements.txt`; Vercel resolves backend dependencies from the
+service root and can turn those into invalid nested paths during `uv lock`.
 
 Vercel deployment uses the root `vercel.json` services config:
 

@@ -1,6 +1,0 @@
-pyproject.toml
-supervision/__init__.py
-supervision.egg-info/PKG-INFO
-supervision.egg-info/SOURCES.txt
-supervision.egg-info/dependency_links.txt
-supervision.egg-info/top_level.txt

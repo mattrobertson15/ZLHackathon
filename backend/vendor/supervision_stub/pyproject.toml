@@ -1,9 +1,0 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "supervision"
-version = "0.20.0"
-description = "Stub satisfying inference-sdk's `supervision` import without pulling in matplotlib/scipy"
-requires-python = ">=3.8"
