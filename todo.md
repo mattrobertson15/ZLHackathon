@@ -100,14 +100,16 @@
   - Summary list with click-to-view modal
 
 ## Phase 10: Frontend - UI Components
-- [ ] UploadDropzone component
-- [ ] DetectionViewer component (annotated image with bounding boxes)
-- [ ] ComplianceScoreCard component
-- [ ] ViolationBreakdownChart component (Recharts)
-- [ ] TrendChart component (Recharts)
-- [ ] EventTable component
-- [ ] AlertCard component
-- [ ] SummaryCard component
+- [x] UploadDropzone component
+- [x] DetectionViewer component (annotated image with bounding boxes)
+- [x] ComplianceScoreCard component
+- [x] StatCard component (reusable stat display)
+- [x] ViolationBreakdownCard component
+- [x] SeverityBreakdownCard component
+- [x] TrendTable component
+- [x] EventTable component
+- [x] AlertCard component
+- [x] SummaryCard component
 
 ## Phase 11: Integration & Testing
 - [ ] Test full upload → analyze → events → alerts flow

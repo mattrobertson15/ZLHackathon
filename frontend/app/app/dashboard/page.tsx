@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getAnalyticsOverview, getAnalyticsTrends } from "@/lib/api";
 import { AnalyticsOverview, AnalyticsTrends } from "@/lib/types";
+import ComplianceScoreCard from "@/components/ComplianceScoreCard";
+import StatCard from "@/components/StatCard";
+import ViolationBreakdownCard from "@/components/ViolationBreakdownCard";
+import SeverityBreakdownCard from "@/components/SeverityBreakdownCard";
+import TrendTable from "@/components/TrendTable";
 
 export default function Dashboard() {
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
@@ -74,127 +79,32 @@ export default function Dashboard() {
           <h2 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-medium text-gray-600">Compliance Rate</h3>
-              <p className="text-3xl font-bold text-green-600 mt-2">
-                {overview?.compliancePercentage || 0}%
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-medium text-gray-600">Total Observations</h3>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
-                {overview?.totalObservations || 0}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-medium text-gray-600">Safety Violations</h3>
-              <p className="text-3xl font-bold text-red-600 mt-2">
-                {overview?.totalViolations || 0}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-medium text-gray-600">Pending Reviews</h3>
-              <p className="text-3xl font-bold text-yellow-600 mt-2">
-                {overview?.openEvents || 0}
-              </p>
-            </div>
+            <ComplianceScoreCard percentage={overview?.compliancePercentage || 0} />
+            <StatCard label="Total Observations" value={overview?.totalObservations || 0} />
+            <StatCard label="Safety Violations" value={overview?.totalViolations || 0} color="red" />
+            <StatCard label="Pending Reviews" value={overview?.openEvents || 0} color="yellow" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Violation Breakdown
-              </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Missing Helmet</span>
-                  <span className="font-semibold text-gray-900">
-                    {overview?.violationBreakdown.no_helmet || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Missing Vest</span>
-                  <span className="font-semibold text-gray-900">
-                    {overview?.violationBreakdown.no_vest || 0}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Severity Breakdown
-              </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">High</span>
-                  <span className="font-semibold text-red-600">
-                    {overview?.severityBreakdown.high || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Medium</span>
-                  <span className="font-semibold text-yellow-600">
-                    {overview?.severityBreakdown.medium || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Low</span>
-                  <span className="font-semibold text-green-600">
-                    {overview?.severityBreakdown.low || 0}
-                  </span>
-                </div>
-              </div>
-            </div>
+            <ViolationBreakdownCard
+              title="Violation Breakdown"
+              items={[
+                { label: "Missing Helmet", value: overview?.violationBreakdown.no_helmet || 0 },
+                { label: "Missing Vest", value: overview?.violationBreakdown.no_vest || 0 },
+              ]}
+            />
+            <SeverityBreakdownCard
+              items={[
+                { label: "High", value: overview?.severityBreakdown.high || 0, color: "red" },
+                { label: "Medium", value: overview?.severityBreakdown.medium || 0, color: "yellow" },
+                { label: "Low", value: overview?.severityBreakdown.low || 0, color: "green" },
+              ]}
+            />
           </div>
 
           {trends && trends.points.length > 0 && (
-            <div className="mt-6 bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Compliance Trends (Daily)
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="border-b">
-                    <tr>
-                      <th className="text-left py-2 px-4 font-semibold text-gray-600">
-                        Date
-                      </th>
-                      <th className="text-right py-2 px-4 font-semibold text-gray-600">
-                        Compliance %
-                      </th>
-                      <th className="text-right py-2 px-4 font-semibold text-gray-600">
-                        Violations
-                      </th>
-                      <th className="text-right py-2 px-4 font-semibold text-gray-600">
-                        No Helmet
-                      </th>
-                      <th className="text-right py-2 px-4 font-semibold text-gray-600">
-                        No Vest
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {trends.points.map((point) => (
-                      <tr key={point.date} className="border-b hover:bg-gray-50">
-                        <td className="py-2 px-4 text-gray-900">{point.date}</td>
-                        <td className="text-right py-2 px-4 text-gray-900">
-                          {point.compliancePercentage}%
-                        </td>
-                        <td className="text-right py-2 px-4 text-gray-900">
-                          {point.totalViolations}
-                        </td>
-                        <td className="text-right py-2 px-4 text-gray-900">
-                          {point.noHelmet}
-                        </td>
-                        <td className="text-right py-2 px-4 text-gray-900">
-                          {point.noVest}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="mt-6">
+              <TrendTable points={trends.points} title="Compliance Trends (Daily)" />
             </div>
           )}
         </div>

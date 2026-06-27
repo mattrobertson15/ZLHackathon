@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { listEvents, updateEvent } from "@/lib/api";
 import { SafetyEvent, EventStatus, Severity } from "@/lib/types";
+import EventTable from "@/components/EventTable";
 
 export default function EventsPage() {
   const [events, setEvents] = useState<SafetyEvent[]>([]);
@@ -166,55 +167,8 @@ export default function EventsPage() {
               <div className="bg-white rounded-lg shadow p-8 text-center text-gray-600">
                 Loading events...
               </div>
-            ) : events.length === 0 ? (
-              <div className="bg-white rounded-lg shadow p-8 text-center text-gray-600">
-                No events found
-              </div>
             ) : (
-              <div className="space-y-3">
-                {events.map((event) => (
-                  <div
-                    key={event.id}
-                    className="bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => setSelectedEvent(event)}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900 capitalize">
-                          {event.eventType.replace(/_/g, " ")}
-                        </p>
-                        {event.violationType && (
-                          <p className="text-sm text-gray-600 capitalize">
-                            {event.violationType.replace(/_/g, " ")}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <span
-                          className={`inline-block px-3 py-1 text-sm font-medium rounded-full ${getSeverityColor(
-                            event.severity
-                          )}`}
-                        >
-                          {event.severity}
-                        </span>
-                        <span
-                          className={`inline-block px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(
-                            event.status
-                          )}`}
-                        >
-                          {event.status}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      {event.suggestedAction}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Confidence: {(event.confidence * 100).toFixed(1)}% • ID: {event.id}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              <EventTable events={events} onEventSelect={setSelectedEvent} />
             )}
           </div>
 

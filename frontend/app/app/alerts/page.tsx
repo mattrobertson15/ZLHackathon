@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { listAlerts, updateAlert } from "@/lib/api";
 import { AlertRecord, AlertStatus } from "@/lib/types";
+import AlertCard from "@/components/AlertCard";
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<AlertRecord[]>([]);
@@ -195,32 +196,7 @@ export default function AlertsPage() {
             ) : (
               <div className="space-y-3">
                 {alerts.map((alert) => (
-                  <div
-                    key={alert.id}
-                    onClick={() => setSelectedAlert(alert)}
-                    className={`${getAlertTypeColor(
-                      alert.alertType
-                    )} rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className="font-semibold mb-1">{alert.title}</h3>
-                        <p className="text-sm opacity-90">{alert.message}</p>
-                      </div>
-                      <div className="flex gap-2 ml-4">
-                        <span
-                          className={`inline-block px-2 py-1 text-xs font-medium rounded whitespace-nowrap ${getStatusColor(
-                            alert.status
-                          )}`}
-                        >
-                          {alert.status}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-xs opacity-75 mt-2">
-                      {new Date(alert.createdAt).toLocaleString()}
-                    </div>
-                  </div>
+                  <AlertCard key={alert.id} alert={alert} onSelect={setSelectedAlert} />
                 ))}
               </div>
             )}
