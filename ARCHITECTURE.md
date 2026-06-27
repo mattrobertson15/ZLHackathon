@@ -410,6 +410,13 @@ Aggregate repeated violations.
 
 This keeps inference fast and manageable.
 
+Static File Serving
+
+Uploaded files are saved to UPLOAD_STORAGE_PATH and served at /media/{fileName}.
+This is a separate path from the /uploads API resource (POST /uploads, GET
+/uploads, GET /uploads/{upload_id}) to avoid routing collisions between the
+REST resource and static file serving.
+
 Data Storage Options
 
 For hackathon speed, use one of these paths:

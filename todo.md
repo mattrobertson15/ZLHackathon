@@ -1,22 +1,22 @@
 # Safety Sentinel — Hackathon Build Plan
 
 ## Phase 1: Foundation & Infrastructure
-- [ ] Set up FastAPI backend project structure
+- [x] Set up FastAPI backend project structure
 - [ ] Set up Next.js frontend project structure
-- [ ] Configure environment variables (.env files)
+- [x] Configure environment variables (.env files)
   - `ANTHROPIC_API_KEY` for Claude summaries
   - `QWEN_API_KEY` for vision model
   - `UPLOAD_STORAGE_PATH` for local image/video storage
-- [ ] Create SQLite database schema (uploads, detections, safety_events, alerts, summaries)
-- [ ] Set up database ORM/query layer (SQLAlchemy or similar)
-- [ ] Create base API health check endpoint (`GET /health`)
+- [x] Create SQLite database schema (uploads done; detections, safety_events, alerts, summaries pending later phases)
+- [x] Set up database ORM/query layer (SQLAlchemy or similar)
+- [x] Create base API health check endpoint (`GET /health`)
 
 ## Phase 2: Upload & Storage
-- [ ] Implement file upload handler (`POST /uploads`)
-- [ ] Store uploaded files locally (use `UPLOAD_STORAGE_PATH`)
-- [ ] Implement upload retrieval (`GET /uploads`, `GET /uploads/{upload_id}`)
-- [ ] Add video frame extraction utility (sample 1 frame per 1-2 seconds, cap at 20-30 frames)
-- [ ] Implement upload status tracking (uploaded → processing → processed → failed)
+- [x] Implement file upload handler (`POST /uploads`)
+- [x] Store uploaded files locally (use `UPLOAD_STORAGE_PATH`)
+- [x] Implement upload retrieval (`GET /uploads`, `GET /uploads/{upload_id}`)
+- [x] Add video frame extraction utility (sample 1 frame per 1-2 seconds, cap at 20-30 frames)
+- [x] Implement upload status tracking (uploaded → processing → processed → failed)
 
 ## Phase 3: Vision Inference Integration
 - [ ] Integrate Qwen3-VL30B API client

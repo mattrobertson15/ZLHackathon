@@ -17,6 +17,12 @@ Base URL
 
 http://localhost:8000
 
+Note: the `/uploads` path is reserved for the upload API resource
+(`POST /uploads`, `GET /uploads`, `GET /uploads/{upload_id}`). To avoid
+routing collisions between the resource path and static file serving,
+uploaded files are served from `/media/{fileName}` instead. `fileUrl` in
+upload responses reflects this, e.g. `/media/warehouse-floor.jpg`.
+
 Core Resources
 
 Upload
@@ -66,7 +72,7 @@ Response
     "id": "upl_123",
     "fileName": "warehouse-floor.jpg",
     "fileType": "image",
-    "fileUrl": "/uploads/warehouse-floor.jpg",
+    "fileUrl": "/media/warehouse-floor.jpg",
     "uploadedAt": "2026-06-27T14:30:00Z",
     "status": "uploaded"
   }
@@ -84,7 +90,7 @@ Response
       "id": "upl_123",
       "fileName": "warehouse-floor.jpg",
       "fileType": "image",
-      "fileUrl": "/uploads/warehouse-floor.jpg",
+      "fileUrl": "/media/warehouse-floor.jpg",
       "uploadedAt": "2026-06-27T14:30:00Z",
       "status": "processed"
     }
@@ -102,7 +108,7 @@ Response
     "id": "upl_123",
     "fileName": "warehouse-floor.jpg",
     "fileType": "image",
-    "fileUrl": "/uploads/warehouse-floor.jpg",
+    "fileUrl": "/media/warehouse-floor.jpg",
     "uploadedAt": "2026-06-27T14:30:00Z",
     "status": "processed"
   }
