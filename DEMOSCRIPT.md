@@ -131,6 +131,8 @@ Suggested narration:
 
 The important part is that Safety Sentinel does not stop at object detection. It converts model outputs into structured safety events that can be tracked over time. This creates an operational data layer for safety teams.
 
+From the event log, click an event row and use the quick-action buttons to mark it reviewed, dismiss it as a false positive (with an optional note explaining why), or resolve it once the violation has been addressed (with an optional note on how). Back on the dashboard, the Review Status card shows live open/reviewed/dismissed/resolved counts and links straight into the filtered event log — this is the human-in-the-loop layer that keeps a supervisor's review queue visible and actionable.
+
 Step 7: Show Mock Alert Center
 
 Navigate to the alerts page.
@@ -279,4 +281,4 @@ Operations leaders, site supervisors, safety managers, compliance teams, and ris
 
 What would you build next?
 
-The next features would be live feed support, zone-based PPE rules, real alert integrations, human review queues, customer-specific model fine-tuning, and exportable compliance reports.
+The next features would be live feed support, zone-based PPE rules, real alert integrations, reviewer identity and audit trails on top of the existing review workflow, customer-specific model fine-tuning, and exportable compliance reports.

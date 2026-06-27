@@ -78,6 +78,8 @@ export interface SafetyEvent {
   severity: Severity;
   confidence: number;
   status: EventStatus;
+  statusUpdatedAt: string | null;
+  reviewNote?: string | null;
   suggestedAction: string;
   createdAt: string;
 }
@@ -110,6 +112,12 @@ export interface AnalyticsOverview {
   violationBreakdown: {
     no_helmet: number;
     no_vest: number;
+  };
+  statusBreakdown: {
+    open: number;
+    reviewed: number;
+    dismissed: number;
+    resolved: number;
   };
 }
 

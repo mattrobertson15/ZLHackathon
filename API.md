@@ -319,6 +319,8 @@ Response
       "severity": "high",
       "confidence": 0.88,
       "status": "open",
+      "statusUpdatedAt": "2026-06-27T14:31:02Z",
+      "reviewNote": null,
       "suggestedAction": "Supervisor review recommended. Helmet appears missing.",
       "createdAt": "2026-06-27T14:31:02Z"
     }
@@ -340,6 +342,8 @@ Response
     "severity": "high",
     "confidence": 0.88,
     "status": "open",
+    "statusUpdatedAt": "2026-06-27T14:31:02Z",
+    "reviewNote": null,
     "suggestedAction": "Supervisor review recommended. Helmet appears missing.",
     "createdAt": "2026-06-27T14:31:02Z"
   }
@@ -347,12 +351,16 @@ Response
 
 PATCH /events/{event_id}
 
-Update event review status.
+Update event review status. Use this to mark an event reviewed, dismiss it as
+a false positive, or resolve a violation. `note` is optional free text — most
+useful on `dismissed` (why it's a false positive) and `resolved` (how the
+violation was addressed). Updating status always refreshes `statusUpdatedAt`.
 
 Request
 
 {
-  "status": "reviewed"
+  "status": "dismissed",
+  "note": "false positive - shadow on hard hat"
 }
 
 Response
@@ -360,7 +368,9 @@ Response
 {
   "event": {
     "id": "evt_001",
-    "status": "reviewed"
+    "status": "dismissed",
+    "statusUpdatedAt": "2026-06-27T15:02:11Z",
+    "reviewNote": "false positive - shadow on hard hat"
   }
 }
 
@@ -473,6 +483,12 @@ Response
   "violationBreakdown": {
     "no_helmet": 11,
     "no_vest": 21
+  },
+  "statusBreakdown": {
+    "open": 7,
+    "reviewed": 198,
+    "dismissed": 12,
+    "resolved": 31
   }
 }
 

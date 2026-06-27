@@ -276,6 +276,8 @@ type SafetyEvent = {
   severity: "low" | "medium" | "high";
   confidence: number;
   status: "open" | "reviewed" | "dismissed" | "resolved";
+  statusUpdatedAt: string | null;
+  reviewNote?: string | null;
   suggestedAction: string;
   createdAt: string;
 };
@@ -365,7 +367,9 @@ Future Enhancements
 * Zone-based PPE rules
 * Location-aware compliance analytics
 * Real alert integrations
-* Human review workflow
+* Reviewer identity and audit trail for review actions (the MVP review
+  workflow — mark reviewed / dismiss / resolve, with notes — has no auth, so
+  it can't attribute who took an action)
 * Supervisor approval queue
 * Custom PPE policy configuration
 * Multi-site benchmarking

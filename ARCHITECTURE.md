@@ -236,9 +236,31 @@ type SafetyEvent = {
   severity: "low" | "medium" | "high";
   confidence: number;
   status: "open" | "reviewed" | "dismissed" | "resolved";
+  statusUpdatedAt: string | null;
+  reviewNote?: string | null;
   suggestedAction: string;
   createdAt: string;
 };
+
+Human Review Workflow
+
+Events move through `status` via `PATCH /events/{event_id}` (see
+[API.md#safety-events](API.md)). Three reviewer actions cover the lifecycle:
+
+* **Mark reviewed** — a supervisor has seen the event; no note needed.
+* **Dismiss** — the event is a false positive; `reviewNote` should capture why
+  (e.g. "shadow on hard hat").
+* **Resolve** — the underlying violation was addressed; `reviewNote` should
+  capture how (e.g. "spoke with worker, vest now worn").
+
+`status_updated_at` is refreshed on every transition so the UI can show how
+long an event has sat in its current status. The frontend events page
+(`frontend/app/app/events/page.tsx`) and `EventTable` component expose these
+as one-click row actions (with an optional note prompt for dismiss/resolve)
+so triage doesn't require opening the detail panel first. The dashboard's
+Review Status card (`ReviewStatusCard`, fed by `statusBreakdown` from
+`GET /analytics/overview`) gives an at-a-glance view of the review queue and
+links into `/app/events?status=...` for drill-in.
 
 7. Mock Alert Center
 
@@ -320,7 +342,9 @@ exposed via `GET /analytics/overview` and `GET /analytics/trends`.
   1 day), `weekly` (last 7 days), `monthly` (last 30 days), or `all` (no
   filter, the default). `severityBreakdown` and `violationBreakdown` are
   computed over `ppe_violation` events only, so their counts sum to
-  `totalViolations`.
+  `totalViolations`. `statusBreakdown` (`open`/`reviewed`/`dismissed`/`resolved`
+  counts) is computed over all events in the window and powers the dashboard's
+  Review Status widget — see "Human Review Workflow" below.
 * `get_trends(period)` — buckets events into points over a fixed lookback
   window: `daily` (last 14 days, one point per calendar day), `weekly` (last 8
   weeks, one point per ISO week start), `monthly` (last 6 months, one point
@@ -586,7 +610,10 @@ Future Architecture Extensions
 * Multi-site dashboards
 * Zone-specific PPE policies
 * Role-based access control
-* Human review workflows
+* Reviewer identity tracking and audit trail for review actions (the MVP
+  review workflow — see "Human Review Workflow" in section 6 — has no
+  authentication, so it can't attribute who reviewed/dismissed/resolved an
+  event)
 * Integrations with Slack, Teams, email, and SMS
 * Integration with EHS systems
 * Custom model fine-tuning per worksite

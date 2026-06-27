@@ -8,6 +8,7 @@ import ComplianceScoreCard from "@/components/ComplianceScoreCard";
 import StatCard from "@/components/StatCard";
 import ViolationBreakdownCard from "@/components/ViolationBreakdownCard";
 import SeverityBreakdownCard from "@/components/SeverityBreakdownCard";
+import ReviewStatusCard from "@/components/ReviewStatusCard";
 import TrendTable from "@/components/TrendTable";
 
 export default function Dashboard() {
@@ -119,7 +120,7 @@ export default function Dashboard() {
             <StatCard label="Pending Reviews" value={overview?.openEvents || 0} color="yellow" />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <ViolationBreakdownCard
               title="Violation Breakdown"
               items={[
@@ -133,6 +134,11 @@ export default function Dashboard() {
                 { label: "Medium", value: overview?.severityBreakdown.medium || 0, color: "yellow" },
                 { label: "Low", value: overview?.severityBreakdown.low || 0, color: "green" },
               ]}
+            />
+            <ReviewStatusCard
+              statusBreakdown={
+                overview?.statusBreakdown || { open: 0, reviewed: 0, dismissed: 0, resolved: 0 }
+              }
             />
           </div>
 

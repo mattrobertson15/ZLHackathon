@@ -69,6 +69,7 @@ def evaluate(detections: list[DetectionResult], upload_id: str) -> list[SafetyEv
 
 
 def _build_event(upload_id, detection, event_type, violation_type, severity, suggested_action) -> SafetyEvent:
+    created_at = now_utc()
     return SafetyEvent(
         id=generate_id("evt"),
         upload_id=upload_id,
@@ -77,6 +78,7 @@ def _build_event(upload_id, detection, event_type, violation_type, severity, sug
         severity=severity,
         confidence=detection.confidence,
         status="open",
+        status_updated_at=created_at,
         suggested_action=suggested_action,
-        created_at=now_utc(),
+        created_at=created_at,
     )

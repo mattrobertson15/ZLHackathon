@@ -124,11 +124,12 @@ export async function getEvent(eventId: string): Promise<SafetyEvent> {
 
 export async function updateEvent(
   eventId: string,
-  status: string
+  status: string,
+  note?: string
 ): Promise<SafetyEvent> {
   const data = await apiCall<{ event: SafetyEvent }>(`/events/${eventId}`, {
     method: "PATCH",
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, note: note || undefined }),
   });
   return data.event;
 }

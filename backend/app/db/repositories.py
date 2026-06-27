@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -108,11 +108,16 @@ def get_safety_event(db: Session, event_id: str) -> Optional[SafetyEvent]:
     return db.query(SafetyEvent).filter(SafetyEvent.id == event_id).first()
 
 
-def update_safety_event_status(db: Session, event_id: str, status: str) -> Optional[SafetyEvent]:
+def update_safety_event_status(
+    db: Session, event_id: str, status: str, note: Optional[str] = None
+) -> Optional[SafetyEvent]:
     event = get_safety_event(db, event_id)
     if event is None:
         return None
     event.status = status
+    event.status_updated_at = datetime.now(timezone.utc)
+    if note is not None:
+        event.review_note = note
     db.commit()
     db.refresh(event)
     return event

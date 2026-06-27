@@ -17,5 +17,7 @@ class SafetyEvent(Base):
     confidence = Column(Float, nullable=False)
     status = Column(String, nullable=False, default="open")
     # open | reviewed | dismissed | resolved
+    status_updated_at = Column(DateTime, nullable=True)
+    review_note = Column(String, nullable=True)
     suggested_action = Column(String, nullable=False)
     created_at = Column(DateTime, nullable=False)

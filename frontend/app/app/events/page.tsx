@@ -15,6 +15,7 @@ export default function EventsPage() {
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("");
   const [selectedEvent, setSelectedEvent] = useState<SafetyEvent | null>(null);
   const [updatingEventId, setUpdatingEventId] = useState<string | null>(null);
+  const [detailNote, setDetailNote] = useState("");
 
   const fetchEvents = async (
     status?: string,
@@ -39,18 +40,28 @@ export default function EventsPage() {
   };
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const initialStatus = params.get("status");
+    if (initialStatus) {
+      setStatusFilter(initialStatus);
+    }
+  }, []);
+
+  useEffect(() => {
     fetchEvents(statusFilter, severityFilter, eventTypeFilter);
   }, [statusFilter, severityFilter, eventTypeFilter]);
 
-  const handleStatusUpdate = async (eventId: string, newStatus: EventStatus) => {
+  const handleStatusUpdate = async (
+    eventId: string,
+    newStatus: EventStatus,
+    note?: string
+  ) => {
     try {
       setUpdatingEventId(eventId);
-      await updateEvent(eventId, newStatus);
-      setEvents((prev) =>
-        prev.map((e) => (e.id === eventId ? { ...e, status: newStatus } : e))
-      );
+      const updated = await updateEvent(eventId, newStatus, note);
+      setEvents((prev) => prev.map((e) => (e.id === eventId ? updated : e)));
       if (selectedEvent?.id === eventId) {
-        setSelectedEvent({ ...selectedEvent, status: newStatus });
+        setSelectedEvent(updated);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update event");
@@ -171,7 +182,15 @@ export default function EventsPage() {
                 Loading events...
               </div>
             ) : (
-              <EventTable events={events} onEventSelect={setSelectedEvent} />
+              <EventTable
+                events={events}
+                onEventSelect={(event) => {
+                  setSelectedEvent(event);
+                  setDetailNote("");
+                }}
+                onStatusUpdate={handleStatusUpdate}
+                updatingEventId={updatingEventId}
+              />
             )}
           </div>
 
@@ -219,6 +238,16 @@ export default function EventsPage() {
                     >
                       {selectedEvent.status}
                     </p>
+                    {selectedEvent.statusUpdatedAt && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Updated {new Date(selectedEvent.statusUpdatedAt).toLocaleString()}
+                      </p>
+                    )}
+                    {selectedEvent.reviewNote && (
+                      <p className="text-sm text-gray-700 mt-2 italic">
+                        &ldquo;{selectedEvent.reviewNote}&rdquo;
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -247,6 +276,13 @@ export default function EventsPage() {
                       <p className="text-sm font-medium text-gray-700 mb-2">
                         Update Status
                       </p>
+                      <textarea
+                        value={detailNote}
+                        onChange={(e) => setDetailNote(e.target.value)}
+                        placeholder="Optional note (e.g. false positive reason, resolution detail)"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-2"
+                        rows={2}
+                      />
                       <div className="space-y-2">
                         {(
                           [
@@ -259,9 +295,14 @@ export default function EventsPage() {
                           .map((status) => (
                             <button
                               key={status}
-                              onClick={() =>
-                                handleStatusUpdate(selectedEvent.id, status)
-                              }
+                              onClick={() => {
+                                handleStatusUpdate(
+                                  selectedEvent.id,
+                                  status,
+                                  detailNote.trim() || undefined
+                                );
+                                setDetailNote("");
+                              }}
                               disabled={updatingEventId === selectedEvent.id}
                               className="w-full px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 capitalize transition-colors"
                             >
