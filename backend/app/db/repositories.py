@@ -8,9 +8,30 @@ from app.models.camera import Camera
 from app.models.detection_result import DetectionResult
 from app.models.safety_event import SafetyEvent
 from app.models.upload import Upload
+from app.models.zone import Zone
 
 
-# --- Cameras ---------------------------------------------------------------
+def get_zone(db: Session, zone_id: str) -> Optional[Zone]:
+    if not zone_id:
+        return None
+    return db.query(Zone).filter(Zone.id == zone_id).first()
+
+
+def list_zones(db: Session) -> list[Zone]:
+    return db.query(Zone).order_by(Zone.display_name.asc()).all()
+
+
+def get_camera(db: Session, camera_id: str) -> Optional[Camera]:
+    if not camera_id:
+        return None
+    return db.query(Camera).filter(Camera.id == camera_id).first()
+
+
+def list_cameras(db: Session) -> list[Camera]:
+    return db.query(Camera).order_by(Camera.display_name.asc()).all()
+
+
+# --- Camera writes + monitoring (RTSP feature) -----------------------------
 
 def create_camera(db: Session, camera: Camera) -> Camera:
     db.add(camera)
@@ -19,16 +40,8 @@ def create_camera(db: Session, camera: Camera) -> Camera:
     return camera
 
 
-def list_cameras(db: Session) -> list[Camera]:
-    return db.query(Camera).order_by(Camera.created_at.desc()).all()
-
-
 def list_monitoring_cameras(db: Session) -> list[Camera]:
     return db.query(Camera).filter(Camera.monitoring.is_(True)).all()
-
-
-def get_camera(db: Session, camera_id: str) -> Optional[Camera]:
-    return db.query(Camera).filter(Camera.id == camera_id).first()
 
 
 def update_camera(db: Session, camera: Camera) -> Camera:

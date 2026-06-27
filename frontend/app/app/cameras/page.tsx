@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   listCameras,
+  listZones,
   createCamera,
   startCamera,
   stopCamera,
@@ -11,18 +12,18 @@ import {
   deleteCamera,
   cameraSnapshotUrl,
 } from "@/lib/api";
-import { Camera, CameraStatus } from "@/lib/types";
+import { Camera, CameraStreamStatus, Zone } from "@/lib/types";
 
-const STATUS_STYLES: Record<CameraStatus, string> = {
+const STREAM_STYLES: Record<CameraStreamStatus, string> = {
   live: "bg-green-100 text-green-800 border-green-200",
   offline: "bg-gray-100 text-gray-700 border-gray-200",
   error: "bg-red-100 text-red-800 border-red-200",
 };
 
-function StatusBadge({ status }: { status: CameraStatus }) {
+function StreamBadge({ status }: { status: CameraStreamStatus }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_STYLES[status]}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${STREAM_STYLES[status]}`}
     >
       <span
         className={`h-2 w-2 rounded-full ${
@@ -40,10 +41,12 @@ function StatusBadge({ status }: { status: CameraStatus }) {
 
 function CameraCard({
   camera,
+  zoneName,
   tick,
   onChanged,
 }: {
   camera: Camera;
+  zoneName?: string;
   tick: number;
   onChanged: () => void;
 }) {
@@ -54,15 +57,13 @@ function CameraCard({
     try {
       setBusy(true);
       await fn();
-      onChanged();
-    } catch {
-      // surface errors via the refreshed camera status (lastError)
-      onChanged();
     } finally {
       setBusy(false);
+      onChanged();
     }
   };
 
+  const isFeed = Boolean(camera.rtspUrl);
   const hasSnapshot = camera.lastCaptureAt && !snapshotFailed;
 
   return (
@@ -72,20 +73,24 @@ function CameraCard({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={cameraSnapshotUrl(camera.id, tick)}
-            alt={`${camera.label} snapshot`}
+            alt={`${camera.displayName} snapshot`}
             className="h-full w-full object-cover"
             onError={() => setSnapshotFailed(true)}
           />
         ) : (
           <div className="text-gray-400 text-sm text-center px-4">
-            {camera.status === "error"
+            {!isFeed
+              ? "Location-only camera (no RTSP feed)"
+              : camera.streamStatus === "error"
               ? "No signal"
               : "Waiting for first capture…"}
           </div>
         )}
-        <div className="absolute top-2 left-2">
-          <StatusBadge status={camera.status} />
-        </div>
+        {isFeed && (
+          <div className="absolute top-2 left-2">
+            <StreamBadge status={camera.streamStatus} />
+          </div>
+        )}
         {camera.monitoring && (
           <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
             ● REC · every {camera.captureIntervalSeconds}s
@@ -95,10 +100,15 @@ function CameraCard({
 
       <div className="p-4 flex flex-col gap-3 flex-1">
         <div>
-          <h3 className="font-semibold text-gray-900">{camera.label}</h3>
+          <h3 className="font-semibold text-gray-900">{camera.displayName}</h3>
           <p className="text-xs text-gray-500">
-            {camera.locationLabel || "No location"} ·{" "}
-            <span className="font-mono break-all">{camera.rtspUrl}</span>
+            Zone: {zoneName || camera.zoneId || "unassigned"}
+            {isFeed && (
+              <>
+                {" · "}
+                <span className="font-mono break-all">{camera.rtspUrl}</span>
+              </>
+            )}
           </p>
         </div>
 
@@ -109,12 +119,14 @@ function CameraCard({
               {camera.recentEventCount}
             </span>
           </span>
-          <span>
-            Last capture:{" "}
-            {camera.lastCaptureAt
-              ? new Date(camera.lastCaptureAt).toLocaleTimeString()
-              : "—"}
-          </span>
+          {isFeed && (
+            <span>
+              Last capture:{" "}
+              {camera.lastCaptureAt
+                ? new Date(camera.lastCaptureAt).toLocaleTimeString()
+                : "—"}
+            </span>
+          )}
         </div>
 
         {camera.lastError && (
@@ -124,34 +136,42 @@ function CameraCard({
         )}
 
         <div className="mt-auto flex flex-wrap gap-2">
-          {camera.monitoring ? (
-            <button
-              disabled={busy}
-              onClick={() => run(() => stopCamera(camera.id))}
-              className="px-3 py-1.5 text-sm font-semibold rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 disabled:opacity-50"
-            >
-              Stop
-            </button>
+          {isFeed ? (
+            camera.monitoring ? (
+              <button
+                disabled={busy}
+                onClick={() => run(() => stopCamera(camera.id))}
+                className="px-3 py-1.5 text-sm font-semibold rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 disabled:opacity-50"
+              >
+                Stop
+              </button>
+            ) : (
+              <button
+                disabled={busy}
+                onClick={() => run(() => startCamera(camera.id))}
+                className="px-3 py-1.5 text-sm font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {busy ? "Starting…" : "Start monitoring"}
+              </button>
+            )
           ) : (
+            <span className="text-xs text-gray-400 self-center">
+              Seeded location camera — no live feed
+            </span>
+          )}
+          {isFeed && (
             <button
               disabled={busy}
-              onClick={() => run(() => startCamera(camera.id))}
-              className="px-3 py-1.5 text-sm font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+              onClick={() => run(() => captureCamera(camera.id))}
+              className="px-3 py-1.5 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
-              {busy ? "Starting…" : "Start monitoring"}
+              Capture now
             </button>
           )}
           <button
             disabled={busy}
-            onClick={() => run(() => captureCamera(camera.id))}
-            className="px-3 py-1.5 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            Capture now
-          </button>
-          <button
-            disabled={busy}
             onClick={() => {
-              if (confirm(`Remove camera "${camera.label}"?`)) {
+              if (confirm(`Remove camera "${camera.displayName}"?`)) {
                 run(() => deleteCamera(camera.id));
               }
             }}
@@ -160,10 +180,7 @@ function CameraCard({
             Remove
           </button>
         </div>
-        <Link
-          href="/app/events"
-          className="text-xs text-blue-600 hover:underline"
-        >
+        <Link href="/app/events" className="text-xs text-blue-600 hover:underline">
           View events on the Events page →
         </Link>
       </div>
@@ -173,15 +190,21 @@ function CameraCard({
 
 export default function CamerasPage() {
   const [cameras, setCameras] = useState<Camera[]>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
 
-  const [label, setLabel] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [rtspUrl, setRtspUrl] = useState("rtsp://localhost:8554/worksite-demo");
-  const [locationLabel, setLocationLabel] = useState("");
+  const [zoneId, setZoneId] = useState("");
   const [interval, setIntervalSeconds] = useState(15);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const zoneName = useCallback(
+    (id?: string | null) => zones.find((z) => z.id === id)?.displayName,
+    [zones]
+  );
 
   const refresh = useCallback(async () => {
     try {
@@ -194,6 +217,9 @@ export default function CamerasPage() {
   }, []);
 
   useEffect(() => {
+    listZones()
+      .then(setZones)
+      .catch(() => setZones([]));
     refresh();
     // Poll camera state + bump the snapshot cache-buster every 3s for a live feel.
     const id = setInterval(() => {
@@ -205,21 +231,20 @@ export default function CamerasPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!label.trim() || !rtspUrl.trim()) {
-      setError("Label and RTSP URL are required.");
+    if (!displayName.trim()) {
+      setError("A display name is required.");
       return;
     }
     try {
       setSubmitting(true);
       setError(null);
       await createCamera({
-        label: label.trim(),
-        rtspUrl: rtspUrl.trim(),
-        locationLabel: locationLabel.trim() || undefined,
+        displayName: displayName.trim(),
+        rtspUrl: rtspUrl.trim() || undefined,
+        zoneId: zoneId || undefined,
         captureIntervalSeconds: interval,
       });
-      setLabel("");
-      setLocationLabel("");
+      setDisplayName("");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to register camera");
@@ -235,7 +260,8 @@ export default function CamerasPage() {
         <p className="text-gray-600">
           Register an RTSP camera feed and Safety Sentinel will watch it
           continuously, capturing frames on an interval and raising PPE events
-          automatically.
+          automatically. Captures inherit the camera&apos;s zone, so live events
+          get the same zone-aware rules as uploads.
         </p>
       </div>
 
@@ -255,31 +281,36 @@ export default function CamerasPage() {
         >
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Camera label
+              Display name
             </label>
             <input
               type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
               placeholder="e.g., Loading Dock Camera"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Location label (optional)
+              Zone (optional)
             </label>
-            <input
-              type="text"
-              value={locationLabel}
-              onChange={(e) => setLocationLabel(e.target.value)}
-              placeholder="e.g., Loading Dock"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <select
+              value={zoneId}
+              onChange={(e) => setZoneId(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">No zone</option>
+              {zones.map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.displayName}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              RTSP URL
+              RTSP URL (optional — leave blank for a location-only camera)
             </label>
             <input
               type="text"
@@ -337,6 +368,7 @@ export default function CamerasPage() {
               <CameraCard
                 key={camera.id}
                 camera={camera}
+                zoneName={zoneName(camera.zoneId)}
                 tick={tick}
                 onChanged={refresh}
               />

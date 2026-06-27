@@ -62,6 +62,12 @@ The system can classify each observation into a safety status:
 * Warning: PPE status is uncertain or incomplete.
 * Violation: Required PPE appears missing.
 
+Zone-Aware PPE Rules
+
+Each upload is tagged with a zone (or a pre-registered camera that supplies its zone). Zones define which PPE items are required and can override default violation severities. This means a high-risk area like a chemical storage room can enforce stricter rules than a general warehouse aisle without any code changes.
+
+The system also detects repeated zone violations: when the same violation type recurs in the same zone within a rolling weekly window, it generates a dedicated alert so supervisors can address systemic issues rather than treating each event in isolation.
+
 Safety Event Log
 
 Each detection result is converted into a structured safety event.
@@ -169,15 +175,19 @@ Included in MVP
 * Upload video
 * Run visual safety analysis
 * Detect person, helmet/no helmet, vest/no vest
+* Tag uploads with a zone (or a pre-registered camera that supplies its zone)
+* Apply zone-aware PPE rules (per-zone required PPE + severity overrides)
 * Generate safety events
+* Detect repeated zone violations (same zone + violation type, weekly window)
 * View annotated results
 * Track violation counts
 * View compliance percentage
 * View violation type breakdown
+* View repeated zone issues on the dashboard
 * View trends over time
 * Generate AI safety summaries
 * Download markdown safety reports
-* Display mock alerts in an alert center
+* Display mock alerts in an alert center (incl. repeated-violation alerts)
 * Monitor an emulated live CCTV (RTSP) camera feed and raise events continuously
 
 Live Camera Emulation (Demo)
@@ -187,22 +197,27 @@ uploads. For demos, a camera is emulated by looping a video file into an RTSP
 server (ffmpeg + mediamtx) that the backend consumes like a real CCTV stream.
 Register the feed on the Cameras page, start monitoring, and the backend
 captures frames on an interval and raises PPE events automatically — flowing
-into the same dashboard, events, and alerts. This always-on stack runs via the
-root `docker-compose.yml` on a persistent container host (not Vercel, whose
+into the same dashboard, events, and alerts. A monitored camera belongs to a
+zone, so its live captures get the same zone-aware PPE rules and
+repeated-violation detection as uploads. This always-on stack runs via the root
+`docker-compose.yml` on a persistent container host (not Vercel, whose
 serverless model can't run a continuous monitor). See
-[emulator/README.md](emulator/README.md) and
-[ARCHITECTURE.md](ARCHITECTURE.md#12-camera--rtsp-ingestion-layer).
+[emulator/README.md](emulator/README.md),
+[ARCHITECTURE.md](ARCHITECTURE.md#12-camera--rtsp-ingestion-layer), and
+[ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md) for the combined zone/camera design.
 
 Not Included in MVP
 
 * Production-grade live ingestion (multi-camera scale, HA, on-prem edge) — basic
   RTSP ingestion is demo-emulated; production hardening is out of scope
+* Authenticated camera ingest / API-key issuance
 * Facial recognition
-* Employee identification
+* Employee identification (repeated-violation detection is zone-based only)
 * Real SMS/email/Slack alerts
 * Production-grade incident escalation
 * HR or badge-system integration
 * Automated disciplinary workflows
+* Zone admin UI (zones are seeded; cameras can be registered for live RTSP)
 
 Tech Stack
 
@@ -264,8 +279,36 @@ type Upload = {
   fileName: string;
   fileType: "image" | "video";
   fileUrl: string;
+  zoneId?: string | null;          // canonical location (-> Zone.id)
+  cameraId?: string | null;        // assigned camera (supplies the zone)
+  zoneDisplayName?: string | null; // resolved convenience field
+  locationLabel?: string | null;   // legacy free-text fallback
   uploadedAt: string;
   status: "uploaded" | "processing" | "processed" | "failed";
+};
+
+Zone
+
+A named area with a PPE policy; the canonical location for an upload.
+
+type Zone = {
+  id: string;                    // slug, e.g. "loading-dock"
+  displayName: string;
+  requiredPpe: string[];         // e.g. ["vest"]
+  severityOverrides: Record<string, string>; // e.g. { "no_vest": "high" }
+  createdAt: string;
+};
+
+Camera
+
+A clip source pre-assigned to a zone; uploads can inherit a camera's zone.
+
+type Camera = {
+  id: string;
+  displayName: string;
+  zoneId: string;
+  status: "active" | "inactive";
+  createdAt: string;
 };
 
 DetectionResult
@@ -310,7 +353,7 @@ Represents a mock alert generated from a safety event.
 type AlertRecord = {
   id: string;
   safetyEventId: string;
-  alertType: "supervisor_review" | "coaching_reminder" | "manual_review";
+  alertType: "supervisor_review" | "coaching_reminder" | "manual_review" | "repeated_violation";
   title: string;
   message: string;
   status: "draft" | "queued" | "sent" | "dismissed"; // "sent" represents mock delivery in MVP
@@ -385,14 +428,11 @@ Instead of waiting for incidents or manually reviewing footage, teams can use AI
 Future Enhancements
 
 * Live camera feed support
-* Zone-based PPE rules
-* Location-aware compliance analytics
 * Real alert integrations
 * Human review workflow
 * Supervisor approval queue
 * Custom PPE policy configuration
 * Multi-site benchmarking
-* Exportable compliance reports
 * Integration with existing safety management systems
 * Model fine-tuning on customer-specific worksites
 

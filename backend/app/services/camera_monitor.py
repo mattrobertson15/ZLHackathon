@@ -20,6 +20,7 @@ from app.config import IS_VERCEL, UPLOAD_STORAGE_PATH
 from app.db.database import SessionLocal
 from app.db.repositories import (
     create_upload,
+    get_zone,
     list_monitoring_cameras,
     update_camera,
     update_upload_status,
@@ -41,19 +42,21 @@ _thread: threading.Thread | None = None
 def capture_and_analyze(db: Session, camera: Camera) -> dict:
     """Capture frames from one camera and run the full analysis pipeline.
 
-    Creates an Upload (source_type="camera"), persists detections/events/alerts,
-    and updates the camera's status/last_capture_at. Raises on capture failure
-    after marking the camera as errored.
+    Creates an Upload (source_type="camera") that inherits the camera's zone, so
+    captures get the same zone-aware rules as uploads. Persists
+    detections/events/alerts and updates the camera's stream_status /
+    last_capture_at. Raises on capture failure after marking the camera errored.
     """
     upload_id = generate_id("cam_upl")
     frame_dir = os.path.join(UPLOAD_STORAGE_PATH, f"{upload_id}_frames")
 
     upload = Upload(
         id=upload_id,
-        file_name=f"{camera.label} capture",
+        file_name=f"{camera.display_name} capture",
         file_type="video",
         file_url="",  # set to the first captured frame below
-        location_label=camera.location_label or camera.label,
+        location_label=camera.display_name,
+        zone_id=camera.zone_id,
         notes=f"Live capture from camera {camera.id} ({camera.rtsp_url}).",
         status="processing",
         source_type="camera",
@@ -66,7 +69,7 @@ def capture_and_analyze(db: Session, camera: Camera) -> dict:
         captured = capture_frames_from_rtsp(camera.rtsp_url, frame_dir)
     except Exception as exc:
         update_upload_status(db, upload_id, "failed")
-        camera.status = "error"
+        camera.stream_status = "error"
         camera.last_error = str(exc)
         camera.last_capture_at = now_utc()
         update_camera(db, camera)
@@ -85,6 +88,7 @@ def capture_and_analyze(db: Session, camera: Camera) -> dict:
     upload.file_url = next(iter(frame_url_by_timestamp.values()))
     db.commit()
 
+    zone = get_zone(db, camera.zone_id) if camera.zone_id else None
     result = run_analysis_pipeline(
         db,
         upload_id,
@@ -93,11 +97,12 @@ def capture_and_analyze(db: Session, camera: Camera) -> dict:
         provider="auto",
         create_events=True,
         create_alerts_flag=True,
+        zone=zone,
     )
 
     update_upload_status(db, upload_id, "processed")
 
-    camera.status = "live"
+    camera.stream_status = "live"
     camera.last_error = None
     camera.last_capture_at = now_utc()
     update_camera(db, camera)

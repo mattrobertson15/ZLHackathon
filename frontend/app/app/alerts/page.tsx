@@ -56,6 +56,8 @@ export default function AlertsPage() {
         return "bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500";
       case "manual_review":
         return "bg-purple-100 text-purple-800 border-l-4 border-purple-500";
+      case "repeated_violation":
+        return "bg-orange-100 text-orange-900 border-l-4 border-orange-500";
       default:
         return "bg-gray-100 text-gray-800 border-l-4 border-gray-500";
     }
@@ -84,6 +86,8 @@ export default function AlertsPage() {
         return "Coaching Reminder";
       case "manual_review":
         return "Manual Review";
+      case "repeated_violation":
+        return "Repeated Violation";
       default:
         return alertType;
     }
@@ -160,6 +164,7 @@ export default function AlertsPage() {
                 <option value="supervisor_review">Supervisor Review</option>
                 <option value="coaching_reminder">Coaching Reminder</option>
                 <option value="manual_review">Manual Review</option>
+                <option value="repeated_violation">Repeated Violation</option>
               </select>
             </div>
           </div>

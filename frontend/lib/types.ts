@@ -61,27 +61,43 @@ export interface Upload {
   fileType: "image" | "video";
   fileUrl: string;
   locationLabel?: string | null;
+  zoneId?: string | null;
+  cameraId?: string | null;
+  zoneDisplayName?: string | null;
   notes?: string | null;
   sourceType?: "upload" | "camera";
-  cameraId?: string | null;
   uploadedAt: string;
   status: "uploaded" | "processing" | "processed" | "failed";
 }
 
-export type CameraStatus = "offline" | "live" | "error";
+export interface Zone {
+  id: string;
+  displayName: string;
+  requiredPpe: string[];
+  severityOverrides: Record<string, string>;
+  createdAt: string;
+}
 
+// Connectivity of a camera's live RTSP feed (only meaningful when monitored).
+export type CameraStreamStatus = "offline" | "live" | "error";
+
+// Unified Camera: a zone-assigned location record that can also be a live RTSP
+// feed. Registry fields (displayName/zoneId/status) come from the location
+// schema; the rtsp*/monitoring/* fields drive continuous monitoring.
 export interface Camera {
   id: string;
-  label: string;
-  rtspUrl: string;
-  locationLabel?: string | null;
-  status: CameraStatus;
+  displayName: string;
+  zoneId?: string | null;
+  status: "active" | "inactive";
+  createdAt: string;
+  // Live RTSP feed (optional — null/offline for location-only cameras)
+  rtspUrl?: string | null;
+  streamStatus: CameraStreamStatus;
   monitoring: boolean;
   captureIntervalSeconds: number;
   lastCaptureAt?: string | null;
   lastError?: string | null;
   recentEventCount: number;
-  createdAt: string;
 }
 
 export interface CameraDetail {
@@ -109,7 +125,11 @@ export interface SafetyEvent {
   createdAt: string;
 }
 
-export type AlertType = "supervisor_review" | "coaching_reminder" | "manual_review";
+export type AlertType =
+  | "supervisor_review"
+  | "coaching_reminder"
+  | "manual_review"
+  | "repeated_violation";
 export type AlertStatus = "draft" | "queued" | "sent_mock" | "dismissed";
 
 export interface AlertRecord {
@@ -120,6 +140,18 @@ export interface AlertRecord {
   message: string;
   status: AlertStatus;
   createdAt: string;
+}
+
+export interface RepeatedViolation {
+  zoneLabel: string;
+  violationType: ViolationType;
+  count: number;
+  distinctUploadCount: number;
+  severity: Severity;
+  latestEventId: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  message: string;
 }
 
 export interface AnalyticsOverview {
@@ -144,6 +176,7 @@ export interface AnalyticsOverview {
     dismissed: number;
     resolved: number;
   };
+  repeatedViolations: RepeatedViolation[];
 }
 
 export interface UploadResults {

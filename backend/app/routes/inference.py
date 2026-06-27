@@ -8,6 +8,7 @@ from app.config import UPLOAD_STORAGE_PATH
 from app.db.database import get_db
 from app.db.repositories import (
     get_upload,
+    get_zone,
     list_detection_results_for_upload,
     update_upload_status,
 )
@@ -107,6 +108,9 @@ def analyze_upload(upload_id: str, request: AnalyzeRequest, db: Session = Depend
                 for f in frames
             }
 
+        # Zone-aware rules: an upload assigned to a zone (directly or via its
+        # camera) gets that zone's required-PPE + severity overrides.
+        zone = get_zone(db, upload.zone_id) if upload.zone_id else None
         result = run_analysis_pipeline(
             db,
             upload_id,
@@ -115,6 +119,7 @@ def analyze_upload(upload_id: str, request: AnalyzeRequest, db: Session = Depend
             provider=request.modelProvider,
             create_events=request.createEvents,
             create_alerts_flag=request.createAlerts,
+            zone=zone,
         )
         detections = result["detections"]
         events = result["events"]

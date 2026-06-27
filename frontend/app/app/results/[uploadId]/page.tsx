@@ -115,6 +115,12 @@ export default function ResultsPage({ params }: { params: Promise<{ uploadId: st
             <p className="font-medium text-gray-900 capitalize">{upload.fileType}</p>
           </div>
           <div>
+            <p className="text-sm text-gray-600">Zone</p>
+            <p className="font-medium text-gray-900">
+              {upload.zoneDisplayName || upload.locationLabel || "No specific zone"}
+            </p>
+          </div>
+          <div>
             <p className="text-sm text-gray-600">Status</p>
             <p className="font-medium text-gray-900 capitalize">{upload.status}</p>
           </div>

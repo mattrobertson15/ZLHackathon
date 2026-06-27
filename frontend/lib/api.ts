@@ -8,9 +8,10 @@ import {
   SafetySummary,
   AnalyzeResponse,
   ModelProvider,
-  UploadResults,
+  Zone,
   Camera,
   CameraDetail,
+  UploadResults,
 } from "./types";
 import type { DemoScenarioResponse } from "./types";
 
@@ -62,12 +63,14 @@ export async function getUpload(uploadId: string): Promise<Upload> {
 export async function uploadFile(
   file: File,
   locationLabel?: string,
-  notes?: string
+  notes?: string,
+  zoneId?: string
 ): Promise<Upload> {
   const formData = new FormData();
   formData.append("file", file);
   if (locationLabel) formData.append("locationLabel", locationLabel);
   if (notes) formData.append("notes", notes);
+  if (zoneId) formData.append("zoneId", zoneId);
 
   const response = await fetch(`${API_BASE_URL}/uploads`, {
     method: "POST",
@@ -178,6 +181,12 @@ export async function updateAlert(
   return data.alert;
 }
 
+// Zones API
+export async function listZones(): Promise<Zone[]> {
+  const data = await apiCall<{ zones: Zone[] }>("/zones");
+  return data.zones;
+}
+
 // Analytics API
 export async function getAnalyticsOverview(
   period = "weekly"
@@ -235,21 +244,21 @@ export async function listCameras(): Promise<Camera[]> {
 }
 
 export async function getCamera(cameraId: string): Promise<CameraDetail> {
-  return apiCall<CameraDetail>(`/cameras/${cameraId}`);
+  return apiCall<CameraDetail>(`/cameras/${cameraId}/detail`);
 }
 
 export async function createCamera(params: {
-  label: string;
-  rtspUrl: string;
-  locationLabel?: string;
+  displayName: string;
+  rtspUrl?: string;
+  zoneId?: string;
   captureIntervalSeconds?: number;
 }): Promise<Camera> {
   const data = await apiCall<{ camera: Camera }>("/cameras", {
     method: "POST",
     body: JSON.stringify({
-      label: params.label,
-      rtspUrl: params.rtspUrl,
-      locationLabel: params.locationLabel || undefined,
+      displayName: params.displayName,
+      rtspUrl: params.rtspUrl || undefined,
+      zoneId: params.zoneId || undefined,
       captureIntervalSeconds: params.captureIntervalSeconds ?? 15,
     }),
   });

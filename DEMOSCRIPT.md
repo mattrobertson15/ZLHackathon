@@ -1,4 +1,4 @@
-DEMO_SCRIPT.md
+DEMOSCRIPT.md
 
 Safety Sentinel Demo Script
 
@@ -36,16 +36,22 @@ Click "Load Demo Scenario" to seed the warehouse shift scenario.
 
 Show:
 
-* Three processed uploads
+* Seven zone-tagged uploads (Loading Dock, General Floor, Welding Station, plus
+  a legacy upload with no zone)
 * Generated PPE detections
 * Safety events across violations, positive observations, and manual review
-* Mock alerts for supervisor review, coaching reminders, and manual review
+* Mock alerts for supervisor review, coaching reminders, manual review, and a
+  repeated zone violation
 
 Suggested narration:
 
 For demo reliability, Safety Sentinel includes a repeatable warehouse shift scenario.
 It uses the same upload, detection, event, alert, and analytics tables as the live
-ingestion workflow, so the rest of the product behaves exactly like a real run.
+ingestion workflow, so the rest of the product behaves exactly like a real run. The
+uploads are tagged with zones, so the same no-vest detection is a high-severity
+violation at the Loading Dock but produces no event on the General Floor where vests
+are not required — and three no-vest violations at the Loading Dock this week raise a
+repeated zone violation alert, all without identifying any employee.
 
 Step 2: Open the Dashboard
 
@@ -56,10 +62,12 @@ Show:
 * Compliance percentage
 * Total violation count
 * Violation type breakdown
+* Repeated Zone Issues card (Loading Dock — 3 no-vest violations this week)
 * Compliance trend over time
 * Recent safety events
 * Recent mock alerts
 * Download Report button for a manager-ready markdown dashboard export
+  (includes the repeated-zone issues table)
 
 Suggested narration:
 
@@ -147,14 +155,17 @@ Safety Sentinel uses a hybrid alerting approach. By default, violations go to su
 
 Suggested alert examples:
 
-Missing Helmet Detected
-High severity
+Missing Vest Detected
+High severity (Loading Dock — vest required)
 Supervisor review recommended
 Missing Vest Detected
-Medium severity
+Medium severity (Packout Line)
 Coaching reminder recommended
 Uncertain PPE Status
 Manual review recommended
+Repeated Vest Issue
+Loading Dock has 3 no-vest violations in the past week
+Supervisor coaching review recommended
 
 Step 8: Show Analytics
 
@@ -329,4 +340,7 @@ Operations leaders, site supervisors, safety managers, compliance teams, and ris
 
 What would you build next?
 
-The next features would be live feed support, zone-based PPE rules, real alert integrations, human review queues, customer-specific model fine-tuning, and exportable compliance reports.
+Zone-based PPE rules and repeated zone violation detection are already in the
+product. The next features would be live feed support, authenticated camera
+ingestion, real alert integrations, human review queues, customer-specific model
+fine-tuning, and exportable compliance reports.

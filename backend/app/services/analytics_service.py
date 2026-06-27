@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app.db.repositories import list_safety_events_since
+from app.services.repeated_violation_service import compute_repeated_violations
 
 # See ARCHITECTURE.md#analytics-layer for the MVP metric definitions.
 OVERVIEW_PERIODS = {"daily", "weekly", "monthly", "all"}
@@ -64,6 +65,7 @@ def get_overview(db: Session, period: str = "all") -> dict:
         "severityBreakdown": dict(severity_breakdown),
         "violationBreakdown": dict(violation_breakdown),
         "statusBreakdown": status_breakdown,
+        "repeatedViolations": compute_repeated_violations(db),
     }
 
 

@@ -1,5 +1,4 @@
 from app.models.alert_record import AlertRecord
-from app.models.camera import Camera
 from app.models.detection_result import DetectionResult
 from app.models.safety_event import SafetyEvent
 from app.models.upload import Upload
@@ -7,33 +6,24 @@ from app.utils.timestamps import to_iso
 
 
 def serialize_upload(upload: Upload) -> dict:
+    """Basic upload serializer (no resolved zoneDisplayName).
+
+    The uploads route uses its own serializer to attach zoneDisplayName; this
+    shared one is used where uploads are embedded without a zone-name lookup
+    (e.g. camera captures, admin responses).
+    """
     return {
         "id": upload.id,
         "fileName": upload.file_name,
         "fileType": upload.file_type,
         "fileUrl": upload.file_url,
         "locationLabel": upload.location_label,
-        "notes": upload.notes,
-        "sourceType": getattr(upload, "source_type", None) or "upload",
+        "zoneId": getattr(upload, "zone_id", None),
         "cameraId": getattr(upload, "camera_id", None),
+        "sourceType": getattr(upload, "source_type", None) or "upload",
+        "notes": upload.notes,
         "uploadedAt": to_iso(upload.uploaded_at),
         "status": upload.status,
-    }
-
-
-def serialize_camera(camera: Camera, recent_event_count: int = 0) -> dict:
-    return {
-        "id": camera.id,
-        "label": camera.label,
-        "rtspUrl": camera.rtsp_url,
-        "locationLabel": camera.location_label,
-        "status": camera.status,
-        "monitoring": camera.monitoring,
-        "captureIntervalSeconds": camera.capture_interval_seconds,
-        "lastCaptureAt": to_iso(camera.last_capture_at) if camera.last_capture_at else None,
-        "lastError": camera.last_error,
-        "recentEventCount": recent_event_count,
-        "createdAt": to_iso(camera.created_at),
     }
 
 

@@ -18,7 +18,13 @@ from app.db.repositories import (
 )
 from app.models.alert_record import AlertRecord
 from app.models.safety_event import SafetyEvent
-from app.services import alert_service, rule_engine, vision_service
+from app.models.zone import Zone
+from app.services import (
+    alert_service,
+    repeated_violation_service,
+    rule_engine,
+    vision_service,
+)
 from app.services.detection_parser import normalize_detections
 
 
@@ -30,11 +36,14 @@ def run_analysis_pipeline(
     provider: str = "auto",
     create_events: bool = True,
     create_alerts_flag: bool = True,
+    zone: Optional[Zone] = None,
 ) -> dict:
     """Run inference over ``frames`` and persist the resulting records.
 
     frames: list of {"path": str, "frameTimestamp": float | None}
     frame_url_by_timestamp: maps a frame timestamp to a servable /media URL.
+    zone: when set, the rule engine applies the zone's required-PPE + severity
+    overrides (see ZONE_CAMERA_PLAN.md). Uploads/captures inherit their zone.
 
     Returns a dict with keys: detections, events, alerts, source, comparison.
     The ``compare`` provider additionally populates ``comparison`` (raw dict).
@@ -63,13 +72,18 @@ def run_analysis_pipeline(
 
     events: list[SafetyEvent] = []
     if create_events:
-        events = rule_engine.evaluate(detections, upload_id)
+        events = rule_engine.evaluate(detections, upload_id, zone)
         events = create_safety_events(db, events)
 
     alerts: list[AlertRecord] = []
     if create_alerts_flag and events:
-        alerts = alert_service.generate_alerts(events)
-        alerts = create_alerts(db, alerts)
+        new_alerts = alert_service.generate_alerts(events)
+        # A newly created violation may push its zone group over the weekly
+        # repeated-violation threshold; see ZONE_CAMERA_PLAN.md#4.
+        new_alerts += repeated_violation_service.generate_repeated_violation_alerts(
+            db, events
+        )
+        alerts = create_alerts(db, new_alerts)
 
     return {
         "detections": detections,

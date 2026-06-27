@@ -14,6 +14,7 @@ from app.routes import (
     inference,
     summaries,
     uploads,
+    zones,
 )
 from app.services import camera_monitor
 
@@ -42,6 +43,16 @@ async def http_exception_handler(request, exc: HTTPException):
 @app.on_event("startup")
 def on_startup():
     init_db()
+
+    from app.db.database import SessionLocal
+    from app.db.seeds import seed_location_data
+
+    db = SessionLocal()
+    try:
+        seed_location_data(db)
+    finally:
+        db.close()
+
     camera_monitor.start_monitor()
 
 
@@ -52,12 +63,13 @@ def on_shutdown():
 
 app.include_router(uploads.router)
 app.include_router(inference.router)
+app.include_router(zones.router)
+app.include_router(cameras.router)
 app.include_router(events.router)
 app.include_router(alerts.router)
 app.include_router(analytics.router)
 app.include_router(summaries.router)
 app.include_router(admin.router)
-app.include_router(cameras.router)
 app.mount("/media", StaticFiles(directory=UPLOAD_STORAGE_PATH), name="media")
 
 

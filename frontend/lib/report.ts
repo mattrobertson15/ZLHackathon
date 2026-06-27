@@ -90,6 +90,26 @@ export function buildDashboardReport(
   markdown: string;
 } {
   const generatedAt = new Date();
+
+  const repeated = overview.repeatedViolations || [];
+  const repeatedViolationLabels: Record<string, string> = {
+    no_helmet: "Missing helmet",
+    no_vest: "Missing vest",
+  };
+  const repeatedRows =
+    repeated.length > 0
+      ? repeated
+          .map(
+            (item) =>
+              `| ${item.zoneLabel} | ${
+                repeatedViolationLabels[item.violationType] || item.violationType
+              } | ${item.count} | ${item.distinctUploadCount} | ${item.severity} | ${formatDate(
+                item.lastSeenAt
+              )} |`
+          )
+          .join("\n")
+      : "| No repeated zone issues this week | - | - | - | - | - |";
+
   const trendRows =
     trends && trends.points.length > 0
       ? trends.points
@@ -133,6 +153,15 @@ export function buildDashboardReport(
 | High | ${overview.severityBreakdown.high} |
 | Medium | ${overview.severityBreakdown.medium} |
 | Low | ${overview.severityBreakdown.low} |
+
+## Repeated Zone Issues
+
+Zones with the same violation recurring within the past 7 days (threshold: 3).
+Employee identity is intentionally out of scope.
+
+| Zone | Violation | Count | Uploads | Severity | Last seen |
+| --- | --- | ---: | ---: | --- | --- |
+${repeatedRows}
 
 ## Compliance Trends
 

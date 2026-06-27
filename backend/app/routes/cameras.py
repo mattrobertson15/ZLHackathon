@@ -12,6 +12,7 @@ from app.db.repositories import (
     create_camera,
     delete_camera,
     get_camera,
+    get_zone,
     list_cameras,
     list_events_for_camera,
     list_uploads_for_camera,
@@ -19,9 +20,9 @@ from app.db.repositories import (
 )
 from app.models.camera import Camera
 from app.services import camera_monitor
-from app.services.serializers import serialize_camera, serialize_event, serialize_upload
+from app.services.serializers import serialize_event, serialize_upload
 from app.utils.ids import generate_id
-from app.utils.timestamps import now_utc
+from app.utils.timestamps import now_utc, to_iso
 
 router = APIRouter(prefix="/cameras", tags=["cameras"])
 
@@ -30,10 +31,33 @@ def _error(code: str, message: str):
     return {"error": {"code": code, "message": message}}
 
 
+def serialize_camera(camera: Camera, recent_event_count: int = 0) -> dict:
+    """Superset serializer: location-registry fields (main) + live-feed fields.
+
+    Clients that only know the registry shape (displayName/zoneId/status) keep
+    working; the RTSP feature reads the additional stream fields.
+    """
+    return {
+        "id": camera.id,
+        "displayName": camera.display_name,
+        "zoneId": camera.zone_id,
+        "status": camera.status,
+        "createdAt": to_iso(camera.created_at),
+        # Live RTSP feed
+        "rtspUrl": camera.rtsp_url,
+        "streamStatus": camera.stream_status,
+        "monitoring": camera.monitoring,
+        "captureIntervalSeconds": camera.capture_interval_seconds,
+        "lastCaptureAt": to_iso(camera.last_capture_at) if camera.last_capture_at else None,
+        "lastError": camera.last_error,
+        "recentEventCount": recent_event_count,
+    }
+
+
 class CreateCameraRequest(BaseModel):
-    label: str
-    rtspUrl: str
-    locationLabel: str | None = None
+    displayName: str
+    rtspUrl: str | None = None
+    zoneId: str | None = None
     captureIntervalSeconds: int = 15
 
 
@@ -56,20 +80,24 @@ def register_camera(request: CreateCameraRequest, db: Session = Depends(get_db))
     if request.captureIntervalSeconds < 5:
         raise HTTPException(
             status_code=400,
-            detail=_error(
-                "INVALID_INTERVAL", "captureIntervalSeconds must be at least 5."
-            ),
+            detail=_error("INVALID_INTERVAL", "captureIntervalSeconds must be at least 5."),
+        )
+    if request.zoneId and get_zone(db, request.zoneId) is None:
+        raise HTTPException(
+            status_code=400,
+            detail=_error("ZONE_NOT_FOUND", f"No zone found for id '{request.zoneId}'."),
         )
 
     camera = Camera(
         id=generate_id("cam"),
-        label=request.label,
+        display_name=request.displayName,
+        zone_id=request.zoneId,
+        status="active",
+        created_at=now_utc(),
         rtsp_url=request.rtspUrl,
-        location_label=request.locationLabel,
-        status="offline",
+        stream_status="offline",
         monitoring=False,
         capture_interval_seconds=request.captureIntervalSeconds,
-        created_at=now_utc(),
     )
     camera = create_camera(db, camera)
     return {"camera": _camera_payload(db, camera)}
@@ -77,12 +105,18 @@ def register_camera(request: CreateCameraRequest, db: Session = Depends(get_db))
 
 @router.get("")
 def get_cameras(db: Session = Depends(get_db)):
-    cameras = list_cameras(db)
-    return {"cameras": [_camera_payload(db, c) for c in cameras]}
+    return {"cameras": [_camera_payload(db, c) for c in list_cameras(db)]}
 
 
 @router.get("/{camera_id}")
+def get_camera_by_id(camera_id: str, db: Session = Depends(get_db)):
+    camera = _get_or_404(db, camera_id)
+    return {"camera": _camera_payload(db, camera)}
+
+
+@router.get("/{camera_id}/detail")
 def get_camera_detail(camera_id: str, db: Session = Depends(get_db)):
+    """Camera plus its recent captures and events (for the camera UI)."""
     camera = _get_or_404(db, camera_id)
     uploads = list_uploads_for_camera(db, camera_id, limit=10)
     events = list_events_for_camera(db, camera_id, limit=20)
@@ -93,18 +127,29 @@ def get_camera_detail(camera_id: str, db: Session = Depends(get_db)):
     }
 
 
+def _require_rtsp(camera: Camera) -> None:
+    if not camera.rtsp_url:
+        raise HTTPException(
+            status_code=400,
+            detail=_error(
+                "NO_RTSP_URL",
+                f"Camera '{camera.id}' has no rtspUrl; it is a location-only camera.",
+            ),
+        )
+
+
 @router.post("/{camera_id}/start")
 def start_camera(camera_id: str, db: Session = Depends(get_db)):
     camera = _get_or_404(db, camera_id)
+    _require_rtsp(camera)
     camera.monitoring = True
     update_camera(db, camera)
 
-    # Do one immediate capture so the user gets instant feedback and the
-    # status flips to live/error without waiting a full interval.
+    # Immediate capture so the user gets instant feedback and stream_status flips.
     try:
         camera_monitor.capture_and_analyze(db, camera)
     except Exception:
-        # capture_and_analyze already recorded status="error" + last_error.
+        # capture_and_analyze already recorded stream_status="error" + last_error.
         pass
 
     db.refresh(camera)
@@ -115,7 +160,7 @@ def start_camera(camera_id: str, db: Session = Depends(get_db)):
 def stop_camera(camera_id: str, db: Session = Depends(get_db)):
     camera = _get_or_404(db, camera_id)
     camera.monitoring = False
-    camera.status = "offline"
+    camera.stream_status = "offline"
     update_camera(db, camera)
     return {"camera": _camera_payload(db, camera)}
 
@@ -123,6 +168,7 @@ def stop_camera(camera_id: str, db: Session = Depends(get_db)):
 @router.post("/{camera_id}/capture")
 def capture_now(camera_id: str, db: Session = Depends(get_db)):
     camera = _get_or_404(db, camera_id)
+    _require_rtsp(camera)
     try:
         result = camera_monitor.capture_and_analyze(db, camera)
     except Exception as exc:
@@ -141,7 +187,7 @@ def capture_now(camera_id: str, db: Session = Depends(get_db)):
 
 @router.get("/{camera_id}/snapshot")
 def camera_snapshot(camera_id: str, db: Session = Depends(get_db)):
-    camera = _get_or_404(db, camera_id)
+    _get_or_404(db, camera_id)
     uploads = list_uploads_for_camera(db, camera_id, limit=1)
     if not uploads or not uploads[0].file_url:
         raise HTTPException(

@@ -62,6 +62,8 @@ Suggested Pages
   Compliance metrics, trends, and violation breakdowns
 /demo
   Guided hackathon demo scenario loader and walkthrough links
+/library
+  All uploads with status badges and links to their results
 /events
   Safety event log
 /alerts
@@ -198,6 +200,36 @@ type DetectionResult = {
   createdAt: string;
 };
 
+Zones & Cameras (Location Schema)
+
+The shared location schema underpins both zone-aware rules and repeated-zone
+analytics. Zones and demo cameras are seeded at startup
+(`app/db/seeds.py`) when their tables are empty; they are read via
+`GET /zones` and `GET /cameras`.
+
+type Zone = {
+  id: string;                    // slug, e.g. "loading-dock"
+  displayName: string;
+  requiredPpe: string[];         // e.g. ["vest"]
+  severityOverrides: Record<string, string>; // e.g. { "no_vest": "high" }
+  createdAt: string;
+};
+
+type Camera = {
+  id: string;                    // slug, e.g. "cam-02"
+  displayName: string;
+  zoneId: string;                // -> Zone.id
+  status: "active" | "inactive";
+  createdAt: string;
+};
+
+An Upload carries a nullable `zoneId` (canonical location) and `cameraId`. When
+an upload is assigned to a camera, it inherits the camera's zone. The legacy
+`locationLabel` is retained as a free-text fallback. The "resolved location" for
+grouping/analytics is `zoneId || locationLabel`. Authenticated camera ingest and
+API-key issuance are intentionally out of scope; see
+[ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md).
+
 5. Rule Engine
 
 The rule engine converts detections into compliance statuses and safety events.
@@ -222,12 +254,25 @@ no_vest -> medium
 uncertain_review -> low or medium
 positive_observation -> low
 
+Zone-Aware Rules (implemented)
+
+`rule_engine.evaluate(detections, upload_id, zone=None)` resolves the upload's
+zone (from `upload.zone_id`) and applies zone policy:
+
+* When `zone` is None, the global MVP rules above apply unchanged (legacy /
+  untagged uploads).
+* When a zone is present, a PPE item only produces an event if the zone requires
+  it. A `no_vest` in a vest-required zone is a violation; the same `no_vest` in a
+  helmet-only zone produces no event at all.
+* A zone's `severityOverrides` can escalate a required violation (e.g. the
+  Loading Dock escalates `no_vest` from the default `medium` to `high`).
+
+See [ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md) and the zones/cameras component
+below.
+
 Future Rules
 
-* Zone-specific PPE requirements
 * Confidence threshold overrides
-* Repeated violation detection
-* Location-aware escalation
 * Shift-level trend analysis
 * Supervisor approval workflows
 
@@ -264,7 +309,11 @@ The MVP should not send real alerts. Instead, it should create mock alert record
 type AlertRecord = {
   id: string;
   safetyEventId: string;
-  alertType: "supervisor_review" | "coaching_reminder" | "manual_review";
+  alertType:
+    | "supervisor_review"
+    | "coaching_reminder"
+    | "manual_review"
+    | "repeated_violation";
   title: string;
   message: string;
   status: "draft" | "queued" | "sent_mock" | "dismissed";
@@ -283,6 +332,13 @@ events. Routing rule:
 * Otherwise `severity == "medium"` → `coaching_reminder`.
 * Any remaining case (e.g. a non-positive low-severity event) falls back to
   `manual_review`.
+
+In addition, `repeated_violation_service.generate_repeated_violation_alerts` runs
+after events are persisted: if a new violation pushes its resolved-location group
+to the weekly threshold (3) and no `repeated_violation` alert already covers that
+group, one `repeated_violation` alert is created, linked to the latest event in
+the group. Dedup resolves each existing repeated alert back to its group, so
+re-analysis does not produce duplicates.
 
 Alerts are stored in the `alert_records` table and exposed via `GET /alerts`
 (filterable by `status`/`alertType`) and `PATCH /alerts/{alert_id}` for mock
@@ -308,6 +364,17 @@ MVP Metrics
 * Positive safety observations
 * Open events
 * Events by severity
+* Repeated zone violations (weekly window)
+
+Repeated Zone Violations
+
+`repeated_violation_service.compute_repeated_violations` groups `ppe_violation`
+events over a rolling 7-day window by resolved location (`zoneId ||
+locationLabel`) and violation type, surfacing groups at or above the threshold
+(3) as `repeatedViolations` on `GET /analytics/overview`. The aggregation is a
+pure function (`aggregate_repeated_violations`) so it is unit-tested without a
+DB. No employee identity is used — grouping is "same zone / same violation type"
+only.
 
 Compliance Percentage
 
@@ -444,28 +511,36 @@ uses. The shared core was extracted into
 `app/services/analysis_pipeline.py:run_analysis_pipeline`, called by both
 `POST /uploads/{upload_id}/analyze` and the camera monitor.
 
-Camera data model (`app/models/camera.py`, table `cameras`):
+Unified Camera data model (`app/models/camera.py`, table `cameras`). This is the
+same `cameras` table used by the location schema (see
+[ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md#1-shared-location-schema)) — a camera
+is a zone-assigned location record that can *optionally* be a live RTSP feed:
 
 type Camera = {
   id: string;
-  label: string;
-  rtspUrl: string;
-  locationLabel?: string;
-  status: "offline" | "live" | "error";
+  displayName: string;
+  zoneId?: string;                 // inherited by uploads/captures for zone-aware rules
+  status: "active" | "inactive";   // registry state
+  createdAt: string;
+  // Live RTSP feed (optional; null/offline for location-only cameras)
+  rtspUrl?: string;
+  streamStatus: "offline" | "live" | "error";   // feed connectivity
   monitoring: boolean;
   captureIntervalSeconds: number;   // default 15, min 5
   lastCaptureAt?: string;
   lastError?: string;
-  createdAt: string;
 };
 
 Capture-as-Upload. Each capture cycle is recorded as an `Upload` row so events,
-alerts, dashboard, and analytics work unchanged. The `uploads` table gained two
-nullable columns (added via the `_apply_migrations` ALTER pattern in
-`db/database.py`):
+alerts, dashboard, and analytics work unchanged. The capture upload sets
+`camera_id` and inherits the camera's `zone_id`, so live captures get the same
+zone-aware PPE rules + repeated-violation detection as file uploads. The
+`uploads` table gained nullable columns (via the `_apply_migrations` ALTER
+pattern in `db/database.py`):
 
 * `source_type` — `"upload"` (default) or `"camera"`
 * `camera_id` — set for camera captures, used to attribute events back to a camera
+* `zone_id` — the camera's zone (also set directly for zone-tagged uploads)
 
 Frame capture. `app/utils/rtsp_capture.py:capture_frames_from_rtsp` opens the
 stream with `cv2.VideoCapture` (OpenCV's bundled ffmpeg backend — no new
@@ -477,7 +552,7 @@ read over TCP (`OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp`, defaulted in
 Background monitor. `app/services/camera_monitor.py` runs one daemon thread,
 started from `main.py` on startup and stopped on shutdown. Each tick it captures
 from every `monitoring=True` camera that is due (per its interval), runs the
-shared pipeline, and updates `status`/`lastCaptureAt`/`lastError`. Each camera is
+shared pipeline, and updates `stream_status`/`lastCaptureAt`/`lastError`. Each camera is
 wrapped in try/except so one dead feed cannot stop the loop. The monitor is a
 **no-op on Vercel** (`IS_VERCEL`) — serverless has no long-lived process, cannot
 hold an RTSP connection, and cannot run ffmpeg. Continuous monitoring therefore
@@ -517,7 +592,8 @@ backend/
       rule_engine.py       [done]
       analysis_pipeline.py [done — shared frames→detections→events→alerts core]
       camera_monitor.py    [done — background RTSP capture loop]
-      media_service.py     [pending: not yet broken out, frame extraction lives in utils/video_frames.py]
+      repeated_violation_service.py [done — weekly per-zone repeat detection]
+      media_service.py     [implemented in utils/video_frames.py]
       analytics_service.py [done]
       alert_service.py     [done]
       summary_service.py   [done]
@@ -739,11 +815,17 @@ Future Architecture Extensions
 
 * Live camera ingestion — basic RTSP ingestion shipped (see §12); next: many
   cameras, per-camera workers, reconnection/backoff, and HLS/WebRTC live preview
+* Authenticated camera ingestion (API-key issuance/rotation; clip POST endpoint)
 * Real-time stream processing — currently interval snapshot capture; next:
   continuous decoding and per-frame streaming
 * Multi-site dashboards
-* Zone-specific PPE policies
+* Zone/camera admin UI (zones and cameras are seeded today)
+* Configurable repeated-violation thresholds
 * Role-based access control
+
+Zone-specific PPE policies and repeated-zone violation detection are implemented;
+see the Rule Engine, Analytics Layer sections and
+[ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md).
 * Human review workflows
 * Integrations with Slack, Teams, email, and SMS
 * Integration with EHS systems

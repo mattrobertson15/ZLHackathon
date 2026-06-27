@@ -42,11 +42,16 @@ for details.
 
 Core Resources
 
+Zone
+Camera
 Upload
 DetectionResult
 SafetyEvent
 AlertRecord
 SafetySummary
+
+Zone and Camera form the shared location schema; see
+[ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md) for the combined zone/camera design.
 
 Health Check
 
@@ -79,8 +84,14 @@ file: image or video file
 
 Optional fields:
 
-locationLabel: string
+zoneId: string         (a zone id from GET /zones; sets the upload's zone)
+cameraId: string       (a camera id; the upload inherits the camera's zone and
+                        overrides zoneId if both are sent)
+locationLabel: string  (legacy free-text fallback)
 notes: string
+
+If `zoneId`/`cameraId` reference an unknown zone/camera, the request fails with
+`400 ZONE_NOT_FOUND` / `400 CAMERA_NOT_FOUND`.
 
 Response
 
@@ -90,17 +101,24 @@ Response
     "fileName": "warehouse-floor.jpg",
     "fileType": "image",
     "fileUrl": "/media/warehouse-floor.jpg",
-    "sourceType": "upload",
+    "locationLabel": null,
+    "zoneId": "loading-dock",
     "cameraId": null,
+    "zoneDisplayName": "Loading Dock",
+    "sourceType": "upload",
+    "notes": null,
     "uploadedAt": "2026-06-27T14:30:00Z",
     "status": "uploaded"
   }
 }
 
-Every upload response includes `sourceType` (`"upload"` or `"camera"`) and
-`cameraId`. Direct file uploads are `"upload"` with `cameraId: null`; rows
-created by the live camera monitor are `"camera"` with the originating
-`cameraId` set. See [Cameras](#cameras).
+The `zoneDisplayName` field is a convenience resolved from `zoneId` so clients
+can label uploads without a second request. Upload objects carry these same
+fields wherever they are embedded (events, demo scenario, etc.).
+
+`sourceType` is `"upload"` for direct file uploads and `"camera"` for rows
+created by the live camera monitor (with `cameraId` set to the originating
+camera). See [Cameras](#cameras).
 
 GET /uploads
 
@@ -138,6 +156,146 @@ Response
   }
 }
 
+Zones
+
+GET /zones
+
+List all zones and their PPE policies. Used by the upload zone picker.
+
+Response
+
+{
+  "zones": [
+    {
+      "id": "loading-dock",
+      "displayName": "Loading Dock",
+      "requiredPpe": ["vest"],
+      "severityOverrides": { "no_vest": "high" },
+      "createdAt": "2026-06-27T14:30:00Z"
+    }
+  ]
+}
+
+GET /zones/{zone_id}
+
+Get a single zone. Returns `404 ZONE_NOT_FOUND` if missing.
+
+Cameras
+
+A camera is a zone-assigned location record that can optionally be a live RTSP
+feed. Cameras without an `rtspUrl` are pure location records (e.g. the seeded
+demo cameras) used so uploads can inherit a zone. When `rtspUrl` is set, the
+background monitor can capture frames on an interval and raise events; each
+capture is recorded as a `camera`-sourced Upload that **inherits the camera's
+zone**, so live events get the same zone-aware rules and repeated-violation
+detection as uploads. See
+[ARCHITECTURE.md](ARCHITECTURE.md#12-camera--rtsp-ingestion-layer) and
+[ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md).
+
+Note: the live monitor only runs on a persistent host, not Vercel.
+
+Camera object
+
+{
+  "id": "cam-02",
+  "displayName": "Dock Camera North",
+  "zoneId": "loading-dock",
+  "status": "active",                  // registry state: active | inactive
+  "createdAt": "2026-06-27T14:30:00Z",
+  "rtspUrl": "rtsp://mediamtx:8554/worksite-demo",  // null for location-only cameras
+  "streamStatus": "live",              // feed connectivity: offline | live | error
+  "monitoring": true,
+  "captureIntervalSeconds": 15,
+  "lastCaptureAt": "2026-06-27T16:40:05Z",
+  "lastError": null,
+  "recentEventCount": 7
+}
+
+POST /cameras
+
+Register a camera. `rtspUrl` is optional (omit for a location-only camera);
+`zoneId` is optional but, if given, must reference an existing zone.
+
+Request
+
+{
+  "displayName": "Loading Dock Camera",
+  "rtspUrl": "rtsp://mediamtx:8554/worksite-demo",  // optional
+  "zoneId": "loading-dock",                          // optional
+  "captureIntervalSeconds": 15                        // optional, default 15, min 5
+}
+
+Response: { "camera": { ...Camera } }
+
+Errors: INVALID_INTERVAL (< 5), ZONE_NOT_FOUND (unknown zoneId).
+
+GET /cameras
+
+List all cameras (seeded location cameras + any registered RTSP feeds).
+
+Response: { "cameras": [ { ...Camera } ] }
+
+GET /cameras/{camera_id}
+
+Get a single camera. Returns `404 CAMERA_NOT_FOUND` if missing.
+
+Response: { "camera": { ...Camera } }
+
+GET /cameras/{camera_id}/detail
+
+Camera plus its recent captures and events (for the camera UI).
+
+Response
+
+{
+  "camera": { ...Camera },
+  "captures": [ { ...Upload } ],     // recent camera-sourced uploads (sourceType="camera")
+  "events": [ { ...SafetyEvent } ]   // recent events from this camera
+}
+
+POST /cameras/{camera_id}/start
+
+Enable continuous monitoring and run one immediate capture. Sets `streamStatus`
+to `live` on success or `error` (with `lastError`) if the stream can't be
+reached. Requires the camera to have an `rtspUrl`.
+
+Response: { "camera": { ...Camera } }
+
+Errors: NO_RTSP_URL (location-only camera), CAMERA_NOT_FOUND.
+
+POST /cameras/{camera_id}/stop
+
+Disable monitoring; sets `streamStatus` to `offline`.
+
+Response: { "camera": { ...Camera } }
+
+POST /cameras/{camera_id}/capture
+
+Capture and analyze once, immediately (independent of the monitoring loop).
+
+Response
+
+{
+  "camera": { ...Camera },
+  "detections": 4,
+  "events": [ { ...SafetyEvent } ]
+}
+
+Errors: NO_RTSP_URL, CAPTURE_FAILED (502) if the stream can't be opened/read.
+
+GET /cameras/{camera_id}/snapshot
+
+Returns the most recent captured frame as `image/jpeg` (binary). The Cameras
+page polls this with a cache-busting query param for a near-live preview.
+
+Errors: NO_SNAPSHOT (404) if no capture exists yet.
+
+DELETE /cameras/{camera_id}
+
+Remove a camera. Its previously created events are left intact.
+
+Response: { "status": "success", "message": "Camera 'cam-02' removed." }
+
 Inference
 
 POST /uploads/{upload_id}/analyze
@@ -160,6 +318,13 @@ for evaluation/reporting only. When `createAlerts` is true (default), mock
 alerts are generated from the created safety events per the routing rule in
 [ARCHITECTURE.md#mock-alert-center](ARCHITECTURE.md); `positive_observation`
 events never produce an alert, so `alerts` may be shorter than `events` or empty.
+
+If the upload has a `zoneId`, its zone is resolved and passed to the rule engine:
+only PPE the zone requires produces events, and violation severities may be
+escalated by the zone's overrides (see
+[ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md)). After events are persisted, a newly
+created violation that pushes its zone group to the weekly repeated-violation
+threshold (3) adds one `repeated_violation` alert to `alerts`.
 
 Request
 
@@ -409,7 +574,7 @@ List mock alerts.
 Query Parameters
 
 status?: draft | queued | sent_mock | dismissed
-alertType?: supervisor_review | coaching_reminder | manual_review
+alertType?: supervisor_review | coaching_reminder | manual_review | repeated_violation
 limit?: number
 
 Response
@@ -475,12 +640,33 @@ Response
     }
   ],
   "counts": {
-    "uploads": 3,
-    "detections": 9,
-    "events": 6,
-    "alerts": 4
+    "uploads": 7,
+    "detections": 16,
+    "events": 8,
+    "alerts": 6
   }
 }
+
+The demo scenario seeds zone-tagged uploads that exercise both zone-aware rules
+(a `no_vest` at the Loading Dock is a high-severity violation, the same
+detection on the General Floor is suppressed) and repeated-zone detection (three
+Loading Dock `no_vest` violations produce one `repeated_violation` alert).
+
+POST /admin/reset
+
+Deletes all `SafetyEvent`, `AlertRecord`, and `DetectionResult` rows. Triggered
+manually by the "Reset Incidents" button on the dashboard; data is never cleared
+automatically and persists in SQLite until this endpoint is called.
+
+Response
+
+{
+  "status": "success",
+  "message": "All incidents reset successfully"
+}
+
+Error — HTTP 500 with `{ "status": "error", "message": "<detail>" }` if the
+delete or commit fails.
 
 Analytics
 
@@ -509,8 +695,27 @@ Response
   "violationBreakdown": {
     "no_helmet": 11,
     "no_vest": 21
-  }
+  },
+  "repeatedViolations": [
+    {
+      "zoneLabel": "Loading Dock",
+      "violationType": "no_vest",
+      "count": 3,
+      "distinctUploadCount": 3,
+      "severity": "high",
+      "latestEventId": "evt_123",
+      "firstSeenAt": "2026-06-22T08:00:00Z",
+      "lastSeenAt": "2026-06-26T18:00:00Z",
+      "message": "Loading Dock has 3 no-vest violations in the past week."
+    }
+  ]
 }
+
+`repeatedViolations` groups `ppe_violation` events over a rolling 7-day window by
+resolved location (zone, falling back to `locationLabel`) and violation type,
+returning groups at or above the threshold (3). It is always computed on the
+weekly window regardless of `period`. No employee identity is used. See
+[ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md).
 
 GET /analytics/trends
 
@@ -631,121 +836,6 @@ Downloaded files use the `.md` extension and include manager-ready narrative
 sections or dashboard KPI tables. A future backend endpoint could add signed PDF
 generation, but that is intentionally out of scope for the hackathon MVP.
 
-Cameras
-
-Live RTSP camera feeds. For demos these are typically emulated (a video file
-restreamed via ffmpeg + mediamtx); the backend treats the RTSP URL like a real
-camera. Each capture cycle is recorded as a `camera`-sourced Upload, so the
-detections/events/alerts it produces appear across the existing Events,
-Dashboard, Alerts, and Analytics endpoints. See
-[ARCHITECTURE.md](ARCHITECTURE.md#12-camera--rtsp-ingestion-layer).
-
-Note: the camera monitor only runs on a persistent host, not Vercel.
-
-Camera object
-
-{
-  "id": "cam_a1b2c3d4e5f6",
-  "label": "Loading Dock Camera",
-  "rtspUrl": "rtsp://mediamtx:8554/worksite-demo",
-  "locationLabel": "Loading Dock",
-  "status": "live",                  // offline | live | error
-  "monitoring": true,
-  "captureIntervalSeconds": 15,
-  "lastCaptureAt": "2026-06-27T16:40:05Z",
-  "lastError": null,
-  "recentEventCount": 7,
-  "createdAt": "2026-06-27T16:38:00Z"
-}
-
-POST /cameras
-
-Register a camera.
-
-Request
-
-{
-  "label": "Loading Dock Camera",
-  "rtspUrl": "rtsp://mediamtx:8554/worksite-demo",
-  "locationLabel": "Loading Dock",   // optional
-  "captureIntervalSeconds": 15        // optional, default 15, min 5
-}
-
-Response
-
-{ "camera": { ...Camera } }
-
-Errors: INVALID_INTERVAL (captureIntervalSeconds < 5).
-
-GET /cameras
-
-List all registered cameras.
-
-Response
-
-{ "cameras": [ { ...Camera } ] }
-
-GET /cameras/{camera_id}
-
-Camera detail with its recent captures and events.
-
-Response
-
-{
-  "camera": { ...Camera },
-  "captures": [ { ...Upload } ],     // recent camera-sourced uploads (sourceType="camera")
-  "events": [ { ...SafetyEvent } ]   // recent events from this camera
-}
-
-Errors: CAMERA_NOT_FOUND.
-
-POST /cameras/{camera_id}/start
-
-Enable continuous monitoring and run one immediate capture. The background
-monitor then captures every `captureIntervalSeconds`. Sets `status` to `live`
-on success or `error` (with `lastError`) if the stream can't be reached.
-
-Response
-
-{ "camera": { ...Camera } }
-
-POST /cameras/{camera_id}/stop
-
-Disable monitoring; sets `status` to `offline`.
-
-Response
-
-{ "camera": { ...Camera } }
-
-POST /cameras/{camera_id}/capture
-
-Capture and analyze once, immediately (independent of the monitoring loop).
-
-Response
-
-{
-  "camera": { ...Camera },
-  "detections": 4,
-  "events": [ { ...SafetyEvent } ]
-}
-
-Errors: CAPTURE_FAILED (502) if the stream can't be opened/read.
-
-GET /cameras/{camera_id}/snapshot
-
-Returns the most recent captured frame as `image/jpeg` (binary). The Cameras
-page polls this with a cache-busting query param for a near-live preview.
-
-Errors: NO_SNAPSHOT (404) if no capture exists yet.
-
-DELETE /cameras/{camera_id}
-
-Remove a camera. Its previously created events are left intact.
-
-Response
-
-{ "status": "success", "message": "Camera 'cam_...' removed." }
-
 Suggested MVP Endpoint Priority
 
 Build endpoints in this order:
@@ -777,13 +867,15 @@ Common Error Codes
 
 INVALID_FILE_TYPE
 UPLOAD_NOT_FOUND
+ZONE_NOT_FOUND
+CAMERA_NOT_FOUND
 INFERENCE_FAILED
 EVENT_NOT_FOUND
 ALERT_NOT_FOUND
 SUMMARY_NOT_FOUND
 SUMMARY_GENERATION_FAILED
-CAMERA_NOT_FOUND
 INVALID_INTERVAL
+NO_RTSP_URL
 CAPTURE_FAILED
 NO_SNAPSHOT
 

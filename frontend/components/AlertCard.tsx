@@ -16,6 +16,8 @@ export default function AlertCard({ alert, onSelect }: AlertCardProps) {
         return "bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500";
       case "manual_review":
         return "bg-purple-100 text-purple-800 border-l-4 border-purple-500";
+      case "repeated_violation":
+        return "bg-orange-100 text-orange-900 border-l-4 border-orange-500";
       default:
         return "bg-gray-100 text-gray-800 border-l-4 border-gray-500";
     }
