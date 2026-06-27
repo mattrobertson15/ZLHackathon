@@ -13,20 +13,41 @@ restreams a file in a realtime loop. **`ffmpeg` alone is not enough** — `-f rt
 [mediamtx](https://github.com/bluenviron/mediamtx) as that server. Both run as
 containers in [`docker-compose.yml`](../docker-compose.yml).
 
+## Multiple feeds
+
+The stack emulates **three cameras at once**, one per seeded zone, so the demo
+shows the same footage producing *different* events under each zone's PPE policy:
+
+| Camera (seeded) | Zone | RTSP path | Clip |
+|-----------------|------|-----------|------|
+| cam-01 Floor Entry | general-floor (helmet) | `worksite-demo` | `demo-worksite.mp4` |
+| cam-02 Dock North | loading-dock (vest, no_vest→high) | `loading-dock` | `loading-dock.mp4` |
+| cam-03 Welding Bay | welding-station (helmet+vest) | `welding-bay` | `welding-bay.mp4` |
+
+`make-sample-video.sh` builds all three clips, and `docker-compose.yml` runs one
+`ffmpeg` service per feed. The three seeded cameras are pre-wired to these RTSP
+URLs and (with `SEED_CAMERA_MONITORING=true`, set in compose) **start monitoring
+automatically** — no manual registration needed.
+
+To theme a feed with your own stills, drop images into the matching
+`media/sources/<zone>/` folder (`floor-entry`, `loading-dock`, `welding-bay`) and
+rebuild — see [media/sources/README.md](media/sources/README.md). Empty folders
+fall back to the shared `uploads/` stills, so this is entirely optional.
+
 ## Quick start
 
 ```bash
-# 1. Build demo footage from the bundled sample images (needs local ffmpeg).
-#    Or drop your own clip in as emulator/media/demo-worksite.mp4 and skip this.
+# 1. Build the three demo clips from the bundled sample images (needs local ffmpeg).
+#    Or drop your own clips in as emulator/media/{demo-worksite,loading-dock,welding-bay}.mp4.
 ./emulator/make-sample-video.sh
 
-# 2. Bring up mediamtx + ffmpeg + backend.
+# 2. Bring up mediamtx + the three ffmpeg feeds + backend.
 docker compose up --build
 
-# 3. Open the frontend, go to Cameras, register:
-#      RTSP URL: rtsp://mediamtx:8554/worksite-demo   (inside compose)
-#                rtsp://localhost:8554/worksite-demo   (testing from host)
-#    Click "Start monitoring" — events appear on Dashboard/Events automatically.
+# 3. Open the frontend → Cameras. cam-01/02/03 are already monitoring; live
+#    snapshots and events flow into Dashboard/Events/Alerts automatically.
+#    (To drive a feed manually instead, register an RTSP URL from the table above:
+#     rtsp://mediamtx:8554/<path> inside compose, rtsp://localhost:8554/<path> from host.)
 ```
 
 ## Verify the stream directly

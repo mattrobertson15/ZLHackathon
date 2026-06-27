@@ -800,6 +800,9 @@ UPLOAD_STORAGE_PATH=./uploads
 DATABASE_URL=sqlite:///./safety_sentinel.db
 # Camera / RTSP emulation
 DEMO_RTSP_URL=rtsp://localhost:8554/worksite-demo
+DEMO_RTSP_BASE_URL=rtsp://localhost:8554   # seeded cameras append their own path
+SEED_CAMERA_MONITORING=false               # docker-compose sets true to auto-start feeds
+SEED_CAMERA_CAPTURE_INTERVAL_SECONDS=10
 OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp
 # Vercel Blob (only used when VERCEL=1; falls back to local disk otherwise)
 BLOB_READ_WRITE_TOKEN=your_vercel_blob_rw_token_here
@@ -841,8 +844,22 @@ to a persistent container host (Fly.io / Render / Railway / a VM) packaged with
 the emulator via the root `docker-compose.yml`:
 
 * `mediamtx` — RTSP server (the listener `ffmpeg -f rtsp` requires)
-* `ffmpeg` — loops `emulator/media/demo-worksite.mp4` into `rtsp://mediamtx:8554/worksite-demo`
-* `backend` — FastAPI + the camera monitor, reaching the feed over the private network
+* `ffmpeg` / `ffmpeg-dock` / `ffmpeg-welding` — one service per feed, each looping
+  its clip (`demo-worksite.mp4`, `loading-dock.mp4`, `welding-bay.mp4`) into a
+  distinct mediamtx path (`/worksite-demo`, `/loading-dock`, `/welding-bay`)
+* `backend` — FastAPI + the camera monitor, reaching the feeds over the private network
+
+The three seeded demo cameras (`cam-01`/`cam-02`/`cam-03`, one per zone) are
+pre-wired to these feeds in `app/db/seeds.py`: each camera's `rtsp_url` is built
+from `DEMO_RTSP_BASE_URL` + its stream path, and `SEED_CAMERA_MONITORING` (set to
+`true` in compose) makes them start monitoring on startup. The same sample footage
+runs on all three feeds, but each zone's PPE policy turns it into different events
+— e.g. a `no_vest` is high-severity in the loading dock yet ignored on the
+helmet-only floor. The monitor already iterates every `monitoring=True` camera, so
+no monitor code changes were needed to support multiple feeds. Build the clips
+first with `./emulator/make-sample-video.sh`. Locally (no emulator),
+`SEED_CAMERA_MONITORING` defaults to `false` so the seeded cameras stay idle and
+don't emit RTSP connection errors.
 
 Because the three services share a private network, the RTSP stream is never
 publicly exposed — only the API on `:8000` is. The Vercel frontend stays as-is;

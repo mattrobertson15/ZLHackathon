@@ -28,8 +28,11 @@ def test_cameras_seeded(client):
     cameras = res.json()["cameras"]
     assert isinstance(cameras, list)
     assert len(cameras) >= 1
-    # Seeded demo cameras are location-only (no live RTSP feed).
+    # Seeded demo cameras are zone-assigned and pre-wired to emulator RTSP feeds
+    # (DEMO_RTSP_BASE_URL + per-camera path); monitoring stays off unless
+    # SEED_CAMERA_MONITORING is set. See app/db/seeds.py.
     assert all("zoneId" in c for c in cameras)
+    assert all(c.get("rtspUrl") for c in cameras)
 
 
 def test_unknown_zone_404(client):

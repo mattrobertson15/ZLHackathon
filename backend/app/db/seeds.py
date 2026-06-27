@@ -8,6 +8,11 @@ import json
 
 from sqlalchemy.orm import Session
 
+from app.config import (
+    DEMO_RTSP_BASE_URL,
+    SEED_CAMERA_CAPTURE_INTERVAL_SECONDS,
+    SEED_CAMERA_MONITORING,
+)
 from app.models.camera import Camera
 from app.models.zone import Zone
 from app.utils.timestamps import now_utc
@@ -25,11 +30,18 @@ DEFAULT_ZONES = [
     ("office-area", "Office / Admin", [], {}),
 ]
 
-# id -> (display_name, zone_id)
+# id -> (display_name, zone_id, rtsp_path)
+#
+# Each camera attaches to the emulator feed at f"{DEMO_RTSP_BASE_URL}/{rtsp_path}"
+# (mediamtx serves all three paths). cam-01 reuses the original "worksite-demo"
+# feed; cam-02/cam-03 get their own looped clips. The same sample footage runs on
+# every feed, but each zone's PPE policy turns it into different events — e.g. a
+# no_vest is high-severity in the loading dock yet ignored on the helmet-only
+# floor. See emulator/README.md and docker-compose.yml.
 DEMO_CAMERAS = [
-    ("cam-01", "Floor Entry Cam", "general-floor"),
-    ("cam-02", "Dock Camera North", "loading-dock"),
-    ("cam-03", "Welding Bay Cam", "welding-station"),
+    ("cam-01", "Floor Entry Cam", "general-floor", "worksite-demo"),
+    ("cam-02", "Dock Camera North", "loading-dock", "loading-dock"),
+    ("cam-03", "Welding Bay Cam", "welding-station", "welding-bay"),
 ]
 
 
@@ -65,8 +77,12 @@ def seed_demo_cameras(db: Session) -> int:
             zone_id=zone_id,
             status="active",
             created_at=created_at,
+            rtsp_url=f"{DEMO_RTSP_BASE_URL}/{rtsp_path}",
+            monitoring=SEED_CAMERA_MONITORING,
+            stream_status="offline",
+            capture_interval_seconds=SEED_CAMERA_CAPTURE_INTERVAL_SECONDS,
         )
-        for camera_id, display_name, zone_id in DEMO_CAMERAS
+        for camera_id, display_name, zone_id, rtsp_path in DEMO_CAMERAS
     ]
     db.add_all(cameras)
     db.commit()
