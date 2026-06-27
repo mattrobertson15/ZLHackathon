@@ -2,6 +2,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
+from app.models.alert_record import AlertRecord
 from app.models.detection_result import DetectionResult
 from app.models.safety_event import SafetyEvent
 from app.models.upload import Upload
@@ -95,3 +96,42 @@ def update_safety_event_status(db: Session, event_id: str, status: str) -> Optio
     db.commit()
     db.refresh(event)
     return event
+
+
+def create_alerts(db: Session, alerts: list[AlertRecord]) -> list[AlertRecord]:
+    db.add_all(alerts)
+    db.commit()
+    for alert in alerts:
+        db.refresh(alert)
+    return alerts
+
+
+def list_alerts(
+    db: Session,
+    status: Optional[str] = None,
+    alert_type: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> list[AlertRecord]:
+    query = db.query(AlertRecord)
+    if status:
+        query = query.filter(AlertRecord.status == status)
+    if alert_type:
+        query = query.filter(AlertRecord.alert_type == alert_type)
+    query = query.order_by(AlertRecord.created_at.desc())
+    if limit:
+        query = query.limit(limit)
+    return query.all()
+
+
+def get_alert(db: Session, alert_id: str) -> Optional[AlertRecord]:
+    return db.query(AlertRecord).filter(AlertRecord.id == alert_id).first()
+
+
+def update_alert_status(db: Session, alert_id: str, status: str) -> Optional[AlertRecord]:
+    alert = get_alert(db, alert_id)
+    if alert is None:
+        return None
+    alert.status = status
+    db.commit()
+    db.refresh(alert)
+    return alert

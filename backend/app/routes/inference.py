@@ -7,15 +7,17 @@ from sqlalchemy.orm import Session
 from app.config import UPLOAD_STORAGE_PATH
 from app.db.database import get_db
 from app.db.repositories import (
+    create_alerts,
     create_detection_results,
     create_safety_events,
     get_upload,
     list_detection_results_for_upload,
     update_upload_status,
 )
+from app.models.alert_record import AlertRecord
 from app.models.detection_result import DetectionResult
 from app.models.safety_event import SafetyEvent
-from app.services import rule_engine, vision_service
+from app.services import alert_service, rule_engine, vision_service
 from app.services.detection_parser import normalize_detections
 from app.utils.timestamps import to_iso
 from app.utils.video_frames import extract_frames
@@ -68,6 +70,18 @@ def _serialize_event(event: SafetyEvent) -> dict:
     }
 
 
+def _serialize_alert(alert: AlertRecord) -> dict:
+    return {
+        "id": alert.id,
+        "safetyEventId": alert.safety_event_id,
+        "alertType": alert.alert_type,
+        "title": alert.title,
+        "message": alert.message,
+        "status": alert.status,
+        "createdAt": to_iso(alert.created_at),
+    }
+
+
 def _resolve_disk_path(file_url: str) -> str:
     stored_name = file_url.removeprefix("/media/")
     return os.path.join(UPLOAD_STORAGE_PATH, stored_name)
@@ -104,6 +118,11 @@ def analyze_upload(upload_id: str, request: AnalyzeRequest, db: Session = Depend
             events = rule_engine.evaluate(detections, upload_id)
             events = create_safety_events(db, events)
 
+        alerts: list[AlertRecord] = []
+        if request.createAlerts and events:
+            alerts = alert_service.generate_alerts(events)
+            alerts = create_alerts(db, alerts)
+
         update_upload_status(db, upload_id, "processed")
     except Exception as exc:
         update_upload_status(db, upload_id, "failed")
@@ -117,9 +136,7 @@ def analyze_upload(upload_id: str, request: AnalyzeRequest, db: Session = Depend
         "status": "processed",
         "detections": [_serialize_detection(d) for d in detections],
         "events": [_serialize_event(e) for e in events],
-        # Mock alert creation lands in Phase 5; createAlerts is accepted but
-        # has no effect yet, so this is always empty for now.
-        "alerts": [],
+        "alerts": [_serialize_alert(a) for a in alerts],
     }
 
 

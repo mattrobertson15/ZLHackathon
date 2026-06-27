@@ -122,9 +122,11 @@ Run PPE analysis on an uploaded image or video.
 
 Note: Qwen3-VL30B integration is deferred until `QWEN_API_KEY` and a verified
 model contract are available (see todo.md Phase 3.5). Until then, every call
-returns mock detections with `source: "manual_mock"`. `createAlerts` is
-accepted for forward compatibility but alert creation is not implemented yet
-(Phase 5), so `alerts` is always `[]`.
+returns mock detections with `source: "manual_mock"`. When `createAlerts` is
+true (default), mock alerts are generated from the created safety events per
+the routing rule in [ARCHITECTURE.md#mock-alert-center](ARCHITECTURE.md);
+`positive_observation` events never produce an alert, so `alerts` may be
+shorter than `events` or empty.
 
 Request
 

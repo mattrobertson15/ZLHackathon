@@ -12,6 +12,7 @@ Base = declarative_base()
 
 def init_db():
     from app.models import (  # noqa: F401  (ensure models are registered)
+        alert_record,
         detection_result,
         safety_event,
         upload,

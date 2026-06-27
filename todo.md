@@ -46,13 +46,13 @@ up once `QWEN_API_KEY` and the Qwen3-VL30B request/response contract are availab
 - [x] Implement event status updates (`PATCH /events/{event_id}`)
 
 ## Phase 5: Mock Alert Generation
-- [ ] Implement alert creation from safety events
+- [x] Implement alert creation from safety events (`app/services/alert_service.py`)
   - High severity → supervisor_review
   - Medium severity → coaching_reminder
-  - Low confidence → manual_review
-- [ ] Create alert retrieval (`GET /alerts`)
-- [ ] Implement alert status updates (`PATCH /alerts/{alert_id}`)
-- [ ] Store alerts in database
+  - Low confidence or uncertain_review → manual_review
+- [x] Create alert retrieval (`GET /alerts`)
+- [x] Implement alert status updates (`PATCH /alerts/{alert_id}`)
+- [x] Store alerts in database (`alert_records` table)
 
 ## Phase 6: Analytics
 - [ ] Calculate compliance percentage (positive_obs / total_observations * 100)

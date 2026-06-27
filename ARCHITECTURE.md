@@ -233,6 +233,23 @@ type AlertRecord = {
   createdAt: string;
 };
 
+Implemented in `app/services/alert_service.py` (`generate_alerts`), called from
+`POST /uploads/{upload_id}/analyze` right after the rule engine creates safety
+events. Routing rule:
+
+* `positive_observation` events never generate an alert (nothing to act on).
+* `confidence < 0.75` (`LOW_CONFIDENCE_THRESHOLD`), or `eventType ==
+  "uncertain_review"`, → `manual_review`, regardless of severity — a human
+  should confirm the underlying detection before anyone acts on it.
+* Otherwise `severity == "high"` → `supervisor_review`.
+* Otherwise `severity == "medium"` → `coaching_reminder`.
+* Any remaining case (e.g. a non-positive low-severity event) falls back to
+  `manual_review`.
+
+Alerts are stored in the `alert_records` table and exposed via `GET /alerts`
+(filterable by `status`/`alertType`) and `PATCH /alerts/{alert_id}` for mock
+status transitions. See [API.md#alerts](API.md) for the full spec.
+
 Alert Philosophy
 
 * Supervisor review is the default path.
@@ -328,7 +345,7 @@ backend/
       inference.py       [done — analyze + detections]
       events.py          [done]
       analytics.py        [pending: Phase 6]
-      alerts.py           [pending: Phase 5]
+      alerts.py           [done]
       summaries.py        [pending: Phase 7]
     services/
       vision_service.py   [done — mock detector; Qwen client deferred to Phase 3.5]
@@ -336,13 +353,13 @@ backend/
       rule_engine.py       [done]
       media_service.py     [pending: not yet broken out, frame extraction lives in utils/video_frames.py]
       analytics_service.py [pending: Phase 6]
-      alert_service.py     [pending: Phase 5]
+      alert_service.py     [done]
       summary_service.py   [pending: Phase 7]
     models/
       upload.py          [done]
       detection_result.py [done]
       safety_event.py     [done]
-      alert_record.py      [pending: Phase 5]
+      alert_record.py      [done]
       safety_summary.py    [pending: Phase 7]
     db/
       database.py
