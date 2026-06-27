@@ -214,7 +214,7 @@ def get_camera_detail(camera_id: str, db: Session = Depends(get_db)):
     """Camera plus its recent captures and events (for the camera UI)."""
     camera = _get_or_404(db, camera_id)
     uploads = list_uploads_for_camera(db, camera_id, limit=10)
-    events = list_events_for_camera(db, camera_id, limit=20)
+    events = list_events_for_camera(db, camera_id, limit=100)
     return {
         "camera": _camera_payload(db, camera),
         "captures": [serialize_upload(u) for u in uploads],

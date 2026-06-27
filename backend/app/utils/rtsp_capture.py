@@ -40,7 +40,7 @@ def _capture_one_frame(rtsp_url: str, out_path: str, timeout: int = 12) -> tuple
             "-flags", "low_delay",
             "-i", rtsp_url,
             "-vframes", "1",
-            "-q:v", "2",
+            "-update", "1",  # required by ffmpeg 7+ to write a single image file
             out_path,
         ],
         capture_output=True,
