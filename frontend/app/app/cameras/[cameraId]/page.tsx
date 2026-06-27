@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getCamera, cameraSnapshotUrl } from "@/lib/api";
+import { getCamera, cameraSnapshotUrl, cameraVideoUrl } from "@/lib/api";
 import { CameraDetail, SafetyEvent } from "@/lib/types";
 import StatCard from "@/components/StatCard";
 import EventTable from "@/components/EventTable";
@@ -51,6 +51,7 @@ export default function CameraDetailPage({
   const [error, setError] = useState<string | null>(null);
   // Bumped each poll to cache-bust the snapshot <img> for a near-live preview.
   const [tick, setTick] = useState(0);
+  const [videoFailed, setVideoFailed] = useState(false);
 
   useEffect(() => {
     params.then((p) => setCameraId(p.cameraId));
@@ -176,11 +177,24 @@ export default function CameraDetailPage({
         <StatCard label="Violations" value={violations} color={violations > 0 ? "red" : "green"} />
       </div>
 
-      {/* Latest snapshot */}
+      {/* Live feed / latest snapshot */}
       {camera.rtspUrl && (
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Latest Snapshot</h2>
-          {camera.lastCaptureAt ? (
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            {!videoFailed ? "Live Feed" : "Latest Snapshot"}
+          </h2>
+          {!videoFailed ? (
+            <video
+              key={camera.id}
+              src={cameraVideoUrl(camera.id)}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="rounded-lg border border-gray-200 max-h-80 w-full object-contain"
+              onError={() => setVideoFailed(true)}
+            />
+          ) : camera.lastCaptureAt ? (
             <div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img

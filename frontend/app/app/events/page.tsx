@@ -50,6 +50,11 @@ export default function EventsPage() {
 
   useEffect(() => {
     fetchEvents(statusFilter, severityFilter, eventTypeFilter);
+    const id = setInterval(
+      () => fetchEvents(statusFilter, severityFilter, eventTypeFilter),
+      5000
+    );
+    return () => clearInterval(id);
   }, [statusFilter, severityFilter, eventTypeFilter]);
 
   const handleStatusUpdate = async (

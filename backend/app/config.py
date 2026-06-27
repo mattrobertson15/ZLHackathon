@@ -60,3 +60,10 @@ DATABASE_URL = os.getenv(
 )
 
 os.makedirs(UPLOAD_STORAGE_PATH, exist_ok=True)
+
+# Path to the emulator clip library. Only present in local/compose setups;
+# the /cameras/{id}/video endpoint returns 404 when the file doesn't exist.
+EMULATOR_MEDIA_PATH = os.getenv(
+    "EMULATOR_MEDIA_PATH",
+    str(Path(__file__).resolve().parent.parent.parent / "emulator" / "media"),
+)

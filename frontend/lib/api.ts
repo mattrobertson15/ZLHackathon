@@ -338,6 +338,11 @@ export function cameraSnapshotUrl(cameraId: string, tick?: number): string {
   return `${API_BASE_URL}/cameras/${cameraId}/snapshot${bust}`;
 }
 
+// Demo MP4 clip endpoint — returns 404 for cameras with no mapped clip.
+export function cameraVideoUrl(cameraId: string): string {
+  return `${API_BASE_URL}/cameras/${cameraId}/video`;
+}
+
 // Admin API
 export async function resetIncidents(): Promise<{ status: string; message: string }> {
   return apiCall<{ status: string; message: string }>("/admin/reset", {

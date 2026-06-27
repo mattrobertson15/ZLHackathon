@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.config import UPLOAD_STORAGE_PATH
+from app.config import EMULATOR_MEDIA_PATH, UPLOAD_STORAGE_PATH
 from app.db.database import get_db
 from app.db.repositories import (
     count_events_for_camera,
@@ -298,6 +298,43 @@ def camera_snapshot(camera_id: str, db: Session = Depends(get_db)):
             detail=_error("NO_SNAPSHOT", "Snapshot frame is no longer on disk."),
         )
     return FileResponse(disk_path, media_type="image/jpeg")
+
+
+_RTSP_PATH_TO_MP4: dict[str, str] = {
+    "worksite-demo": "demo-worksite.mp4",
+    "loading-dock": "loading-dock.mp4",
+    "welding-bay": "welding-bay.mp4",
+}
+
+
+@router.get("/{camera_id}/video")
+def camera_video(camera_id: str, db: Session = Depends(get_db)):
+    """Serve the demo MP4 clip that corresponds to this camera's RTSP stream path.
+
+    Returns 404 for location-only cameras or any camera whose RTSP path isn't
+    one of the three known emulator clips, so the frontend can fall back to the
+    JPEG snapshot gracefully.
+    """
+    camera = _get_or_404(db, camera_id)
+    if not camera.rtsp_url:
+        raise HTTPException(
+            status_code=404,
+            detail=_error("NO_VIDEO", "This camera has no RTSP feed."),
+        )
+    stream_path = camera.rtsp_url.rstrip("/").rsplit("/", 1)[-1]
+    filename = _RTSP_PATH_TO_MP4.get(stream_path)
+    if not filename:
+        raise HTTPException(
+            status_code=404,
+            detail=_error("NO_VIDEO", f"No demo clip mapped for stream path '{stream_path}'."),
+        )
+    disk_path = os.path.join(EMULATOR_MEDIA_PATH, filename)
+    if not os.path.exists(disk_path):
+        raise HTTPException(
+            status_code=404,
+            detail=_error("NO_VIDEO", f"Demo clip '{filename}' not found on disk."),
+        )
+    return FileResponse(disk_path, media_type="video/mp4")
 
 
 @router.delete("/{camera_id}")

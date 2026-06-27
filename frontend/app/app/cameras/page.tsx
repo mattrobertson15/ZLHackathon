@@ -11,6 +11,7 @@ import {
   captureCamera,
   deleteCamera,
   cameraSnapshotUrl,
+  cameraVideoUrl,
   testStream,
   type TestStreamResult,
 } from "@/lib/api";
@@ -53,9 +54,10 @@ function CameraCard({
   onChanged: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
   const [snapshotFailed, setSnapshotFailed] = useState(false);
 
-  // Reset the error flag whenever a new capture lands so the img retries.
+  // Reset the snapshot error flag whenever a new capture lands so the img retries.
   const prevCaptureAt = useRef(camera.lastCaptureAt);
   useEffect(() => {
     if (camera.lastCaptureAt !== prevCaptureAt.current) {
@@ -80,7 +82,18 @@ function CameraCard({
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden flex flex-col">
       <div className="relative aspect-video bg-gray-900 flex items-center justify-center">
-        {hasSnapshot ? (
+        {isFeed && !videoFailed ? (
+          <video
+            key={camera.id}
+            src={cameraVideoUrl(camera.id)}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="h-full w-full object-cover"
+            onError={() => setVideoFailed(true)}
+          />
+        ) : hasSnapshot ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={cameraSnapshotUrl(camera.id, tick)}

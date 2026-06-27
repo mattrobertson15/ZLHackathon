@@ -35,6 +35,8 @@ export default function Dashboard() {
     }
 
     fetchData();
+    const id = setInterval(fetchData, 5000);
+    return () => clearInterval(id);
   }, []);
 
   async function handleReset() {
