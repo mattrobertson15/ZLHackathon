@@ -61,8 +61,10 @@ def test_no_helmet_suppressed_in_vest_only_zone():
 
 def test_positive_only_for_required_ppe():
     zone = _zone("general-floor", "General Floor", ["helmet"])
-    # helmet is required -> positive; vest present but not required -> no event
-    events = rule_engine.evaluate([_det("helmet"), _det("vest")], "upl_1", zone)
+    # The rule engine only emits events when a person is present in the frame
+    # (see rule_engine.evaluate). helmet is required -> positive; vest present
+    # but not required -> no event.
+    events = rule_engine.evaluate([_det("person"), _det("helmet"), _det("vest")], "upl_1", zone)
     assert len(events) == 1
     assert events[0].event_type == "positive_observation"
     assert "General Floor" in events[0].suggested_action
