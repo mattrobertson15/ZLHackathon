@@ -60,12 +60,12 @@
 - [x] Support period filters (daily, weekly, monthly, all)
 
 ## Phase 7: AI Safety Summaries
-- [ ] Integrate Claude API client
-- [ ] Implement summary generation endpoint (`POST /summaries/generate`)
+- [x] Integrate Claude API client
+- [x] Implement summary generation endpoint (`POST /summaries/generate`)
   - Input: period, startDate, endDate
   - Claude generates: executive summary, top violations, trend, recommended actions
-- [ ] Implement summary retrieval (`GET /summaries`, `GET /summaries/{summary_id}`)
-- [ ] Store generated summaries in database
+- [x] Implement summary retrieval (`GET /summaries`, `GET /summaries/{summary_id}`)
+- [x] Store generated summaries in database
 
 ## Phase 8: Frontend - Core Pages
 - [ ] Create landing/home page (project overview)

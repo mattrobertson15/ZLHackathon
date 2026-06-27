@@ -92,6 +92,18 @@ def list_safety_events_since(db: Session, since: Optional[datetime] = None) -> l
     return query.order_by(SafetyEvent.created_at.asc()).all()
 
 
+def list_safety_events_in_range(
+    db: Session, start_date: datetime, end_date: datetime
+) -> list[SafetyEvent]:
+    return (
+        db.query(SafetyEvent)
+        .filter(SafetyEvent.created_at >= start_date)
+        .filter(SafetyEvent.created_at <= end_date)
+        .order_by(SafetyEvent.created_at.asc())
+        .all()
+    )
+
+
 def get_safety_event(db: Session, event_id: str) -> Optional[SafetyEvent]:
     return db.query(SafetyEvent).filter(SafetyEvent.id == event_id).first()
 

@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import UPLOAD_STORAGE_PATH
 from app.db.database import init_db
-from app.routes import alerts, analytics, events, inference, uploads
+from app.routes import alerts, analytics, events, inference, summaries, uploads
 
 app = FastAPI(title="Safety Sentinel API")
 
@@ -39,6 +39,7 @@ app.include_router(inference.router)
 app.include_router(events.router)
 app.include_router(alerts.router)
 app.include_router(analytics.router)
+app.include_router(summaries.router)
 app.mount("/media", StaticFiles(directory=UPLOAD_STORAGE_PATH), name="media")
 
 

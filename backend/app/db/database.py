@@ -15,6 +15,7 @@ def init_db():
         alert_record,
         detection_result,
         safety_event,
+        summary,
         upload,
     )
 
