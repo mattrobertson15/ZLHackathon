@@ -202,7 +202,7 @@ export default function CamerasPage() {
   const [tick, setTick] = useState(0);
 
   const [displayName, setDisplayName] = useState("");
-  const [rtspUrl, setRtspUrl] = useState("rtsp://localhost:8554/worksite-demo");
+  const [rtspUrl, setRtspUrl] = useState("rtsp://safety-sentinel-relay.internal:8554/phone-demo");
   const [zoneId, setZoneId] = useState("");
   const [interval, setIntervalSeconds] = useState(15);
   const [submitting, setSubmitting] = useState(false);
@@ -354,12 +354,13 @@ export default function CamerasPage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <p className="text-xs text-gray-500 mt-1">
-              For the demo emulator use{" "}
+              For the phone relay use{" "}
               <code className="font-mono">
-                rtsp://localhost:8554/worksite-demo
+                rtsp://safety-sentinel-relay.internal:8554/phone-demo
               </code>{" "}
-              (or <code className="font-mono">rtsp://mediamtx:8554/...</code>{" "}
-              inside docker-compose).
+              (push from Larix Broadcaster to{" "}
+              <code className="font-mono">rtmp://safety-sentinel-relay.fly.dev:1935/phone-demo</code>
+              {" "}first).
             </p>
             <div className="mt-3 flex items-center gap-3">
               <button
