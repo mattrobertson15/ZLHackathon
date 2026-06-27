@@ -8,6 +8,8 @@ interface EventTableProps {
   onEventSelect: (event: SafetyEvent) => void;
   onStatusUpdate?: (eventId: string, status: EventStatus, note?: string) => void;
   updatingEventId?: string | null;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }
 
 const QUICK_ACTIONS: { status: EventStatus; label: string; needsNote: boolean }[] = [
@@ -21,6 +23,8 @@ export default function EventTable({
   onEventSelect,
   onStatusUpdate,
   updatingEventId,
+  selectedIds,
+  onToggleSelect,
 }: EventTableProps) {
   const [notePromptFor, setNotePromptFor] = useState<{
     eventId: string;
@@ -95,11 +99,21 @@ export default function EventTable({
       {events.map((event) => (
         <div
           key={event.id}
-          className="bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow"
+          className={`bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow ${selectedIds?.has(event.id) ? "ring-2 ring-blue-500" : ""}`}
           onClick={() => onEventSelect(event)}
         >
           <div className="flex justify-between items-start mb-2">
-            <div className="flex-1">
+            <div className="flex items-start gap-3 flex-1">
+              {onToggleSelect && (
+                <input
+                  type="checkbox"
+                  checked={selectedIds?.has(event.id) ?? false}
+                  onChange={(e) => { e.stopPropagation(); onToggleSelect(event.id); }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-1 rounded border-gray-300 cursor-pointer"
+                />
+              )}
+              <div className="flex-1">
               <p className="font-semibold text-gray-900 capitalize">
                 {event.eventType.replace(/_/g, " ")}
               </p>
@@ -109,7 +123,7 @@ export default function EventTable({
                 </p>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 shrink-0">
               <span
                 className={`inline-block px-3 py-1 text-sm font-medium rounded-full ${getSeverityColor(
                   event.severity
@@ -125,6 +139,7 @@ export default function EventTable({
                 {event.status}
               </span>
             </div>
+          </div>
           </div>
           <p className="text-sm text-gray-600">{event.suggestedAction}</p>
           <p className="text-xs text-gray-500 mt-2">

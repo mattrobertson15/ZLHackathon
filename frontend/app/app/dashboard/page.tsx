@@ -9,7 +9,7 @@ import ViolationBreakdownCard from "@/components/ViolationBreakdownCard";
 import SeverityBreakdownCard from "@/components/SeverityBreakdownCard";
 import RepeatedViolationsCard from "@/components/RepeatedViolationsCard";
 import ReviewStatusCard from "@/components/ReviewStatusCard";
-import TrendTable from "@/components/TrendTable";
+import TrendChart from "@/components/TrendChart";
 
 export default function Dashboard() {
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
@@ -128,7 +128,7 @@ export default function Dashboard() {
 
           {trends && trends.points.length > 0 && (
             <div className="mt-6">
-              <TrendTable points={trends.points} title="Compliance Trends (Daily)" />
+              <TrendChart points={trends.points} title="Compliance Trends (Daily)" />
             </div>
           )}
         </div>

@@ -1,0 +1,31 @@
+app = "safety-sentinel-api"
+primary_region = "sjc"
+
+[build]
+
+[env]
+  PORT = "8000"
+  UPLOAD_STORAGE_PATH = "/data/uploads"
+  DATABASE_URL = "sqlite:////data/safety_sentinel.db"
+  OPENCV_FFMPEG_CAPTURE_OPTIONS = "rtsp_transport;tcp"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[mounts]
+  source = "safety_data"
+  destination = "/data"

@@ -12,6 +12,7 @@ const navItems = [
   { href: "/app/events", label: "Events" },
   { href: "/app/alerts", label: "Alerts" },
   { href: "/app/summaries", label: "Summaries" },
+  { href: "/app/zones", label: "Zones" },
 ];
 
 export default function TopNav() {
