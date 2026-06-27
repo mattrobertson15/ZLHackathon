@@ -22,19 +22,14 @@ srt: no
 api: no
 metrics: no
 
-# --- Authentication (MediaMTX internal users) --------------------------------
-# Reads are unauthenticated but only reachable over the private .internal
-# network (8554 is never published publicly). Publishing REQUIRES credentials so
-# nobody can inject video into the public ingest. Change the publish password
-# before deploying (or override it — see relay/README.md).
+# --- Authentication ----------------------------------------------------------
+# Auth disabled for demo simplicity. RTSP (8554) is private to Fly's network
+# so unauthenticated RTMP publish is low-risk for a hackathon demo.
 authInternalUsers:
   - user: any
     pass:
     permissions:
       - action: read
-  - user: phone
-    pass: Zdoshck
-    permissions:
       - action: publish
 
 # --- Paths -------------------------------------------------------------------
