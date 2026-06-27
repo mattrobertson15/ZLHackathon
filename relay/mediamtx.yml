@@ -22,16 +22,6 @@ srt: no
 api: no
 metrics: no
 
-# --- Authentication ----------------------------------------------------------
-# Auth disabled for demo simplicity. RTSP (8554) is private to Fly's network
-# so unauthenticated RTMP publish is low-risk for a hackathon demo.
-authInternalUsers:
-  - user: any
-    pass:
-    permissions:
-      - action: read
-      - action: publish
-
 # --- Paths -------------------------------------------------------------------
 paths:
   # Phone feed via Larix Broadcaster (app=live, streamkey=phone-demo):
