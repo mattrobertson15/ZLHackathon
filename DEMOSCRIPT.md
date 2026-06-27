@@ -112,6 +112,9 @@ Step 6: Show Generated Safety Events
 Scroll or navigate to the event log.
 
 Show structured events.
+Select an event and show the source image or video in the review panel so the
+supervisor can visually confirm whether the AI output is correct before marking
+the event reviewed, dismissed, or resolved.
 
 Example events:
 

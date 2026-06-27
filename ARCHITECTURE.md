@@ -240,6 +240,7 @@ The app should store every safety-relevant observation as a structured event.
 type SafetyEvent = {
   id: string;
   uploadId: string;
+  upload?: Upload;
   eventType: "positive_observation" | "ppe_violation" | "uncertain_review";
   violationType?: "no_helmet" | "no_vest";
   severity: "low" | "medium" | "high";
@@ -248,6 +249,11 @@ type SafetyEvent = {
   suggestedAction: string;
   createdAt: string;
 };
+
+Safety event rows store the `uploadId` as the durable media reference. The
+events API enriches list/detail responses with the related upload metadata so
+the frontend review panel can display the source image or video while a
+supervisor marks the event as reviewed, dismissed, or resolved.
 
 7. Mock Alert Center
 

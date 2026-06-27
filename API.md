@@ -329,7 +329,17 @@ Response
       "confidence": 0.88,
       "status": "open",
       "suggestedAction": "Supervisor review recommended. Helmet appears missing.",
-      "createdAt": "2026-06-27T14:31:02Z"
+      "createdAt": "2026-06-27T14:31:02Z",
+      "upload": {
+        "id": "upl_123",
+        "fileName": "warehouse-floor.jpg",
+        "fileType": "image",
+        "fileUrl": "/media/warehouse-floor.jpg",
+        "locationLabel": "Warehouse A",
+        "notes": "Forklift aisle review",
+        "uploadedAt": "2026-06-27T14:30:00Z",
+        "status": "processed"
+      }
     }
   ]
 }
@@ -350,7 +360,17 @@ Response
     "confidence": 0.88,
     "status": "open",
     "suggestedAction": "Supervisor review recommended. Helmet appears missing.",
-    "createdAt": "2026-06-27T14:31:02Z"
+    "createdAt": "2026-06-27T14:31:02Z",
+    "upload": {
+      "id": "upl_123",
+      "fileName": "warehouse-floor.jpg",
+      "fileType": "image",
+      "fileUrl": "/media/warehouse-floor.jpg",
+      "locationLabel": "Warehouse A",
+      "notes": "Forklift aisle review",
+      "uploadedAt": "2026-06-27T14:30:00Z",
+      "status": "processed"
+    }
   }
 }
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { listEvents, updateEvent } from "@/lib/api";
+import { listEvents, resolveMediaUrl, updateEvent } from "@/lib/api";
 import { SafetyEvent, EventStatus, Severity } from "@/lib/types";
 import EventTable from "@/components/EventTable";
 
@@ -183,6 +183,34 @@ export default function EventsPage() {
                 </h2>
 
                 <div className="space-y-4">
+                  {selectedEvent.upload?.fileUrl && (
+                    <div className="rounded-lg border border-gray-200 overflow-hidden bg-gray-50">
+                      {selectedEvent.upload.fileType === "image" ? (
+                        <img
+                          src={resolveMediaUrl(selectedEvent.upload.fileUrl)}
+                          alt={`Source upload for event ${selectedEvent.id}`}
+                          className="w-full max-h-72 object-contain bg-gray-900"
+                        />
+                      ) : (
+                        <video
+                          src={resolveMediaUrl(selectedEvent.upload.fileUrl)}
+                          controls
+                          className="w-full max-h-72 bg-gray-900"
+                        />
+                      )}
+                      <div className="p-3 border-t border-gray-200">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {selectedEvent.upload.fileName}
+                        </p>
+                        {selectedEvent.upload.locationLabel && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            {selectedEvent.upload.locationLabel}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <p className="text-sm text-gray-600">Event Type</p>
                     <p className="font-medium text-gray-900 capitalize">

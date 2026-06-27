@@ -5,8 +5,9 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.db.repositories import get_safety_event, list_safety_events, update_safety_event_status
+from app.db.repositories import get_safety_event, get_upload, list_safety_events, update_safety_event_status
 from app.models.safety_event import SafetyEvent
+from app.models.upload import Upload
 from app.utils.timestamps import to_iso
 
 router = APIRouter(prefix="/events", tags=["events"])
@@ -18,8 +19,23 @@ def _error(code: str, message: str):
     return {"error": {"code": code, "message": message}}
 
 
-def _serialize_event(event: SafetyEvent) -> dict:
+def _serialize_upload(upload: Optional[Upload]) -> Optional[dict]:
+    if upload is None:
+        return None
     return {
+        "id": upload.id,
+        "fileName": upload.file_name,
+        "fileType": upload.file_type,
+        "fileUrl": upload.file_url,
+        "locationLabel": upload.location_label,
+        "notes": upload.notes,
+        "uploadedAt": to_iso(upload.uploaded_at),
+        "status": upload.status,
+    }
+
+
+def _serialize_event(event: SafetyEvent, upload: Optional[Upload] = None) -> dict:
+    payload = {
         "id": event.id,
         "uploadId": event.upload_id,
         "eventType": event.event_type,
@@ -30,6 +46,9 @@ def _serialize_event(event: SafetyEvent) -> dict:
         "suggestedAction": event.suggested_action,
         "createdAt": to_iso(event.created_at),
     }
+    if upload is not None:
+        payload["upload"] = _serialize_upload(upload)
+    return payload
 
 
 @router.get("")
@@ -49,7 +68,11 @@ def get_events(
         severity=severity,
         limit=limit,
     )
-    return {"events": [_serialize_event(e) for e in events]}
+    uploads = {
+        upload_id: get_upload(db, upload_id)
+        for upload_id in {e.upload_id for e in events}
+    }
+    return {"events": [_serialize_event(e, uploads.get(e.upload_id)) for e in events]}
 
 
 @router.get("/{event_id}")
@@ -60,7 +83,7 @@ def get_event(event_id: str, db: Session = Depends(get_db)):
             status_code=404,
             detail=_error("EVENT_NOT_FOUND", f"No safety event found for id '{event_id}'."),
         )
-    return {"event": _serialize_event(event)}
+    return {"event": _serialize_event(event, get_upload(db, event.upload_id))}
 
 
 class UpdateEventRequest(BaseModel):
@@ -83,4 +106,4 @@ def patch_event(event_id: str, request: UpdateEventRequest, db: Session = Depend
             status_code=404,
             detail=_error("EVENT_NOT_FOUND", f"No safety event found for id '{event_id}'."),
         )
-    return {"event": _serialize_event(event)}
+    return {"event": _serialize_event(event, get_upload(db, event.upload_id))}
