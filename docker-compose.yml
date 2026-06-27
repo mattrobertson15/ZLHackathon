@@ -100,8 +100,10 @@ services:
       # ROBOFLOW_API_KEY: ""
       # QWEN_API_KEY: ""
       # ANTHROPIC_API_KEY: ""
+      EMULATOR_MEDIA_PATH: /emulator/media
     volumes:
       - backend-data:/data
+      - ./emulator/media:/emulator/media:ro
     networks:
       - sentinel
 

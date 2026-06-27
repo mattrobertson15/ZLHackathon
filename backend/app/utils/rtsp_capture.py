@@ -26,8 +26,12 @@ def _ffmpeg_available() -> bool:
     return shutil.which("ffmpeg") is not None
 
 
-def _capture_one_frame(rtsp_url: str, out_path: str, timeout: int = 12) -> bool:
-    """Grab a single frame from ``rtsp_url`` and write it to ``out_path``."""
+def _capture_one_frame(rtsp_url: str, out_path: str, timeout: int = 12) -> tuple[bool, str]:
+    """Grab a single frame from ``rtsp_url`` and write it to ``out_path``.
+
+    Returns (success, stderr_tail) so callers can surface ffmpeg errors.
+    """
+    import logging
     result = subprocess.run(
         [
             "ffmpeg", "-y",
@@ -42,7 +46,13 @@ def _capture_one_frame(rtsp_url: str, out_path: str, timeout: int = 12) -> bool:
         capture_output=True,
         timeout=timeout,
     )
-    return result.returncode == 0 and os.path.exists(out_path)
+    stderr = result.stderr.decode(errors="replace").strip()
+    if result.returncode != 0:
+        # Log last few lines so it shows up in fly logs
+        tail = "\n".join(stderr.splitlines()[-6:]) if stderr else "(no output)"
+        logging.getLogger(__name__).warning("ffmpeg RTSP capture failed:\n%s", tail)
+        return False, tail
+    return os.path.exists(out_path), ""
 
 
 def capture_frames_from_rtsp(
@@ -77,17 +87,15 @@ def _capture_with_ffmpeg(
         frame_file = os.path.join(output_dir, f"frame_{i:03d}.jpg")
         remaining = max(5, int(OPEN_TIMEOUT_SECONDS - (time.monotonic() - start)))
         try:
-            ok = _capture_one_frame(rtsp_url, frame_file, timeout=remaining)
+            ok, ffmpeg_err = _capture_one_frame(rtsp_url, frame_file, timeout=remaining)
         except subprocess.TimeoutExpired:
-            ok = False
+            ok, ffmpeg_err = False, "ffmpeg timed out"
 
         if not ok:
             if not extracted:
                 raise ValueError(
                     f"Could not read a frame from RTSP stream: {rtsp_url}\n"
-                    "Make sure the stream is live and the path matches your "
-                    "broadcaster (for Streamlabs mobile use …/phone-demo; "
-                    "for Streamlabs OBS desktop use …/live/phone-demo)."
+                    f"ffmpeg error: {ffmpeg_err}"
                 )
             break
 
