@@ -33,7 +33,7 @@ authInternalUsers:
     permissions:
       - action: read
   - user: phone
-    pass: CHANGE_ME_STRONG_PASSWORD
+    pass: Zdoshck
     permissions:
       - action: publish
 

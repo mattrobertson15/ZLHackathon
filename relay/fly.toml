@@ -1,33 +1,26 @@
-# Fly app for the MediaMTX relay (phone-push ingest for the live demo).
+# fly.toml app configuration file generated for safety-sentinel-relay on 2026-06-27T13:54:46-05:00
 #
-# Deploy:  cd relay && fly launch --no-deploy --copy-config --name safety-sentinel-relay
-#          fly deploy
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
-# The backend app (safety-sentinel-api) reaches this over Fly private networking
-# at rtsp://safety-sentinel-relay.internal:8554/phone-demo — no public RTSP port
-# is needed. Only the RTMP ingest (1935) is exposed publicly for the phone.
-app = "safety-sentinel-relay"
-primary_region = "sjc"
+
+app = 'safety-sentinel-relay'
+primary_region = 'sjc'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
 
-# Public RTMP ingest — the phone (Larix Broadcaster) pushes here.
 [[services]]
-  protocol = "tcp"
+  protocol = 'tcp'
   internal_port = 1935
-  auto_stop_machines = false
+  auto_stop_machines = 'off'
   auto_start_machines = true
   min_machines_running = 1
 
   [[services.ports]]
     port = 1935
 
-# NOTE: RTSP (8554) is intentionally NOT published here. The backend reads it
-# over the private .internal network; validate it with the backend's
-# POST /cameras/test-stream endpoint (which runs inside Fly), not from outside.
-
 [[vm]]
-  memory = "256mb"
-  cpu_kind = "shared"
+  memory = '256mb'
+  cpu_kind = 'shared'
   cpus = 1
+  memory_mb = 256
