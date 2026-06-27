@@ -17,6 +17,29 @@ os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;tcp")
 # docker-compose the backend reaches the stream over the private network.
 DEMO_RTSP_URL = os.getenv("DEMO_RTSP_URL", "rtsp://localhost:8554/worksite-demo")
 
+# Base RTSP URL (host:port, no path) the seeded demo cameras attach to. Each
+# seeded camera appends its own stream path (e.g. ".../loading-dock"). Inside
+# docker-compose this is set to "rtsp://mediamtx:8554"; on the host it defaults
+# to localhost. See app/db/seeds.py and docker-compose.yml.
+DEMO_RTSP_BASE_URL = os.getenv("DEMO_RTSP_BASE_URL", "rtsp://localhost:8554")
+
+# Whether the seeded demo cameras start with monitoring=True. Off by default so
+# a plain local backend (no emulator running) doesn't spew RTSP connection
+# errors every tick; docker-compose sets this to "true" so `docker compose up`
+# lights all feeds automatically.
+SEED_CAMERA_MONITORING = os.getenv("SEED_CAMERA_MONITORING", "false").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
+# Capture interval (seconds) for the seeded demo cameras. Modest by default so
+# several simultaneous looped feeds don't overload inference; lower it (1–2) for
+# a snappy single-camera walk-by demo.
+SEED_CAMERA_CAPTURE_INTERVAL_SECONDS = int(
+    os.getenv("SEED_CAMERA_CAPTURE_INTERVAL_SECONDS", "10")
+)
+
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
 ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "")

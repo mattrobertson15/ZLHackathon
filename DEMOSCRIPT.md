@@ -203,26 +203,31 @@ This week, Safety Sentinel analyzed 248 visual safety observations. Overall PPE 
 
 Optional Demo Step: Live Camera (RTSP) Emulation
 
-This step shows Safety Sentinel watching a "live CCTV camera" instead of a
-one-off upload. The camera is emulated by looping a video file into an RTSP
-server, so it behaves like a real feed without needing a physical camera.
+This step shows Safety Sentinel watching **three "live CCTV cameras" at once** —
+one per zone — instead of a one-off upload. The cameras are emulated by looping
+video files into an RTSP server, so they behave like real feeds without needing
+physical cameras.
 
 Setup (before the demo):
 
 1. Build demo footage (once): `./emulator/make-sample-video.sh`
-   (or drop your own clip in as `emulator/media/demo-worksite.mp4`).
+   This produces three clips (`demo-worksite.mp4`, `loading-dock.mp4`,
+   `welding-bay.mp4`); or drop your own clips in under `emulator/media/`.
 2. Start the stack: `docker compose up --build`
-   This runs mediamtx (RTSP server) + ffmpeg (restream loop) + the backend.
+   This runs mediamtx (RTSP server) + three ffmpeg feeds + the backend.
 
 During the demo:
 
-1. Go to the Cameras page.
-2. Register a camera with RTSP URL `rtsp://mediamtx:8554/worksite-demo`
-   (use `rtsp://localhost:8554/worksite-demo` if the backend runs on the host).
-3. Click "Start monitoring." The live snapshot preview appears and the status
-   flips to "Live."
-4. Wait one interval (default 15s) — new PPE events appear automatically on the
-   Dashboard, Events, and Alerts pages, attributed to the camera.
+1. Go to the Cameras page. The three seeded cameras (Floor Entry, Dock North,
+   Welding Bay) are **already monitoring** — `SEED_CAMERA_MONITORING=true` starts
+   them on boot, so there's nothing to register or click.
+2. Live snapshot previews appear and each status reads "Live."
+3. Within one interval (default 10s), PPE events appear automatically on the
+   Dashboard, Events, and Alerts pages, attributed to each camera.
+4. Money shot: the **same footage** raises **different events per zone** — a
+   missing vest is a high-severity violation on the loading-dock camera but
+   produces nothing on the helmet-only floor camera, because the rule engine
+   applies each camera's zone policy.
 
 Suggested narration:
 
