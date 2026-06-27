@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { listAlerts, updateAlert } from "@/lib/api";
 import { AlertRecord, AlertStatus } from "@/lib/types";
 import AlertCard from "@/components/AlertCard";
@@ -98,29 +97,7 @@ export default function AlertsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center">
-          <Link href="/app/dashboard" className="text-2xl font-bold text-gray-900">
-            Safety Sentinel
-          </Link>
-          <div className="flex gap-4">
-            <Link href="/app/demo" className="text-gray-600 hover:text-gray-900">
-              Demo
-            </Link>
-            <Link href="/app/dashboard" className="text-gray-600 hover:text-gray-900">
-              Dashboard
-            </Link>
-            <Link href="/app/events" className="text-gray-600 hover:text-gray-900">
-              Events
-            </Link>
-            <Link href="/app/summaries" className="text-gray-600 hover:text-gray-900">
-              Summaries
-            </Link>
-          </div>
-        </div>
-      </nav>
-
+    <>
       <div className="max-w-7xl mx-auto p-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Safety Alerts</h1>
 
@@ -292,6 +269,6 @@ export default function AlertsPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

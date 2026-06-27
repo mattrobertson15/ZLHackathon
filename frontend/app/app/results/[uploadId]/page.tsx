@@ -44,7 +44,7 @@ export default function ResultsPage({ params }: { params: Promise<{ uploadId: st
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-[calc(100vh-73px)] flex items-center justify-center">
         <div className="text-gray-600">Loading results...</div>
       </div>
     );
@@ -52,41 +52,18 @@ export default function ResultsPage({ params }: { params: Promise<{ uploadId: st
 
   if (error || !upload) {
     return (
-      <div className="min-h-screen bg-gray-100">
-        <nav className="bg-white shadow">
-          <div className="max-w-6xl mx-auto px-8 py-4">
-            <Link href="/app/dashboard" className="text-2xl font-bold text-gray-900">
-              Safety Sentinel
-            </Link>
-          </div>
-        </nav>
+      <>
         <div className="max-w-6xl mx-auto p-8">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
             {error || "Upload not found"}
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white shadow">
-        <div className="max-w-6xl mx-auto px-8 py-4 flex justify-between items-center">
-          <Link href="/app/dashboard" className="text-2xl font-bold text-gray-900">
-            Safety Sentinel
-          </Link>
-          <div className="flex gap-4">
-            <Link href="/app/demo" className="text-gray-600 hover:text-gray-900">
-              Demo
-            </Link>
-            <Link href="/app/dashboard" className="text-gray-600 hover:text-gray-900">
-              Dashboard
-            </Link>
-          </div>
-        </div>
-      </nav>
-
+    <>
       <div className="max-w-6xl mx-auto p-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Analysis Results</h1>
 
@@ -141,6 +118,6 @@ export default function ResultsPage({ params }: { params: Promise<{ uploadId: st
           </Link>
         </div>
       </div>
-    </div>
+    </>
   );
 }

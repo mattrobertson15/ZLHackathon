@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { getAnalyticsOverview, getAnalyticsTrends, resetIncidents } from "@/lib/api";
 import { AnalyticsOverview, AnalyticsTrends } from "@/lib/types";
 import { buildDashboardReport, downloadMarkdownReport } from "@/lib/report";
@@ -69,7 +68,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 p-8 flex items-center justify-center">
+      <div className="min-h-[calc(100vh-73px)] p-8 flex items-center justify-center">
         <div className="text-gray-600">Loading dashboard...</div>
       </div>
     );
@@ -77,7 +76,7 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-100 p-8">
+      <div className="p-8">
         <div className="max-w-6xl mx-auto">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
             {error}
@@ -88,27 +87,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white shadow">
-        <div className="max-w-6xl mx-auto px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Safety Sentinel</h1>
-          <div className="flex gap-4">
-            <Link href="/app/demo" className="text-gray-600 hover:text-gray-900">
-              Demo
-            </Link>
-            <Link href="/app/upload" className="text-gray-600 hover:text-gray-900">
-              Upload
-            </Link>
-            <Link href="/app/events" className="text-gray-600 hover:text-gray-900">
-              Events
-            </Link>
-            <Link href="/app/alerts" className="text-gray-600 hover:text-gray-900">
-              Alerts
-            </Link>
-          </div>
-        </div>
-      </nav>
-
+    <>
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-8">
@@ -162,6 +141,6 @@ export default function Dashboard() {
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 }

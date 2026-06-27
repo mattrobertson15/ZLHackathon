@@ -50,23 +50,7 @@ export default function UploadPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white shadow">
-        <div className="max-w-2xl mx-auto px-8 py-4 flex justify-between items-center">
-          <Link href="/app/dashboard" className="text-2xl font-bold text-gray-900">
-            Safety Sentinel
-          </Link>
-          <div className="flex gap-4">
-            <Link href="/app/demo" className="text-gray-600 hover:text-gray-900">
-              Demo
-            </Link>
-            <Link href="/app/dashboard" className="text-gray-600 hover:text-gray-900">
-              Dashboard
-            </Link>
-          </div>
-        </div>
-      </nav>
-
+    <>
       <div className="max-w-2xl mx-auto p-8">
         <div className="bg-white rounded-lg shadow p-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Upload Media</h1>
@@ -163,6 +147,6 @@ export default function UploadPage() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
