@@ -1,15 +1,15 @@
 """Vision inference orchestration.
 
 See ARCHITECTURE.md#vision-inference-layer. The Qwen3-VL30B client
-integrates vision inference for PPE detection. Falls back to mock
-detections if the API call fails, preserving demo reliability.
+integrates vision inference for PPE detection. Falls back to Roboflow
+if available, then to mock detections if the API call fails, preserving demo reliability.
 """
 import base64
 import random
 import requests
 from typing import Optional, TypedDict
 
-from app.config import QWEN_API_KEY
+from app.config import QWEN_API_KEY, ROBOFLOW_API_KEY
 
 PPE_LABELS = ["person", "helmet", "no_helmet", "vest", "no_vest"]
 
@@ -25,12 +25,25 @@ def run_inference(frames: list[dict]) -> tuple[list[RawDetection], str]:
     """frames: list of {"path": str, "frameTimestamp": float | None}
 
     Returns (raw_detections, source).
+
+    Inference priority:
+    1. Qwen Vision (if QWEN_API_KEY set)
+    2. Roboflow (if ROBOFLOW_API_KEY set)
+    3. Mock detections (fallback)
     """
     if QWEN_API_KEY:
         try:
             return _call_qwen_vision(frames), "qwen_vision"
-        except NotImplementedError:
-            pass
+        except Exception as e:
+            print(f"Warning: Qwen inference failed: {e}")
+
+    if ROBOFLOW_API_KEY:
+        try:
+            from app.services.roboflow_service import run_roboflow_inference
+            return run_roboflow_inference(frames), "roboflow"
+        except Exception as e:
+            print(f"Warning: Roboflow inference failed: {e}")
+
     return _generate_mock_detections(frames), "manual_mock"
 
 

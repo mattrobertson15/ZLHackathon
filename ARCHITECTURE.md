@@ -135,16 +135,28 @@ Current Implementation Status
 `app/services/vision_service.py` implements `run_inference(frames)`, which is the
 single entry point the `/uploads/{upload_id}/analyze` endpoint calls.
 
-When `QWEN_API_KEY` is set, the real Qwen3-VL30B client (`_call_qwen_vision`)
-sends each frame to the Qwen API via `dashscope.aliyuncs.com`. The API returns
-structured JSON with detections for person, helmet, no_helmet, vest, and no_vest.
-If the Qwen call succeeds, results are parsed and returned with source="qwen_vision".
-If the Qwen call fails for any reason, `_call_qwen_vision` falls back to the mock
-generator for that frame, preserving demo reliability.
+Inference priority (first available wins):
 
-When `QWEN_API_KEY` is not set, `run_inference` routes directly to
-`_generate_mock_detections`, a deterministic-per-frame mock generator that produces
-realistic person/PPE detection mixes.
+1. **Qwen Vision** (if `QWEN_API_KEY` is set)
+   - Real Qwen3-VL30B client via `dashscope.aliyuncs.com`
+   - Returns structured JSON with detections: person, helmet, no_helmet, vest, no_vest
+   - Source: "qwen_vision"
+
+2. **Roboflow** (if `ROBOFLOW_API_KEY` is set)
+   - Hosted inference API via `serverless.roboflow.com`
+   - Model: personal-protective-equipment-combined-model/8
+   - Returns object detections with class, confidence, and bounding box
+   - Class mapping: "NO-Safety Vest" → "no_vest", etc.
+   - Source: "roboflow"
+   - Implementation: `app/services/roboflow_service.py`
+
+3. **Mock Generator** (fallback, always available)
+   - Deterministic-per-frame mock generator
+   - Produces realistic person/PPE detection mixes
+   - Source: "manual_mock"
+
+Each backend is fully isolated. If any call fails, the next option is tried
+automatically, preserving demo reliability.
 
 4. Detection Parser
 
@@ -489,13 +501,18 @@ SQLite or Supabase, depending on team speed.
 Environment Variables
 
 # Backend
-ANTHROPIC_API_KEY=
-QWEN_VISION_API_KEY=
-ROBOFLOW_API_KEY=
+ANTHROPIC_API_KEY=your_anthropic_key_here
+QWEN_API_KEY=your_qwen_key_here
+ROBOFLOW_API_KEY=your_roboflow_key_here
 # Storage
 UPLOAD_STORAGE_PATH=./uploads
+DATABASE_URL=sqlite:///./safety_sentinel.db
 # Frontend
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+
+Note: API keys can be omitted individually. The system will use the first available
+inference backend. Roboflow requires an API key to `serverless.roboflow.com` for the
+personal-protective-equipment-combined-model/8.
 
 Non-Goals
 
