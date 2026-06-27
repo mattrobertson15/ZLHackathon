@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -82,6 +83,13 @@ def list_safety_events(
     if limit:
         query = query.limit(limit)
     return query.all()
+
+
+def list_safety_events_since(db: Session, since: Optional[datetime] = None) -> list[SafetyEvent]:
+    query = db.query(SafetyEvent)
+    if since:
+        query = query.filter(SafetyEvent.created_at >= since)
+    return query.order_by(SafetyEvent.created_at.asc()).all()
 
 
 def get_safety_event(db: Session, event_id: str) -> Optional[SafetyEvent]:
