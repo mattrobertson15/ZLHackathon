@@ -329,7 +329,7 @@ export default function EventsPage() {
                         value={detailNote}
                         onChange={(e) => setDetailNote(e.target.value)}
                         placeholder="Optional note (e.g. false positive reason, resolution detail)"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-2"
+                        className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-2"
                         rows={2}
                       />
                       <div className="space-y-2">
