@@ -7,24 +7,12 @@ from sqlalchemy.orm import Session
 from app.config import UPLOAD_STORAGE_PATH
 from app.db.database import get_db
 from app.db.repositories import (
-    create_alerts,
-    create_detection_results,
-    create_safety_events,
     get_upload,
     get_zone,
     list_detection_results_for_upload,
     update_upload_status,
 )
-from app.models.alert_record import AlertRecord
-from app.models.safety_event import SafetyEvent
-from app.services import (
-    alert_service,
-    blob_service,
-    repeated_violation_service,
-    rule_engine,
-    vision_service,
-)
-from app.services.detection_parser import normalize_detections
+from app.services.analysis_pipeline import run_analysis_pipeline
 from app.services.serializers import serialize_alert, serialize_detection, serialize_event
 from app.utils.video_frames import extract_frames
 
@@ -120,41 +108,28 @@ def analyze_upload(upload_id: str, request: AnalyzeRequest, db: Session = Depend
                 for f in frames
             }
 
-        comparison = None
-        if request.modelProvider == "compare":
-            comparison_result = vision_service.run_comparison(frames)
-            primary = comparison_result["primary"]
-            raw_detections = primary["detections"]
-            source = primary["source"]
-            comparison = _serialize_comparison(upload_id, comparison_result["comparison"])
-        elif request.modelProvider in {"roboflow", "qwen_vision"}:
-            raw_detections, source = vision_service.run_inference_with_fallback(
-                frames, request.modelProvider
-            )
-        else:
-            raw_detections, source = vision_service.run_inference(frames, request.modelProvider)
-
-        for raw in raw_detections:
-            raw["frameUrl"] = frame_url_by_timestamp.get(raw.get("frameTimestamp"))
-
-        detections = normalize_detections(raw_detections, upload_id, source)
-        detections = create_detection_results(db, detections)
-
-        events: list[SafetyEvent] = []
-        if request.createEvents:
-            zone = get_zone(db, upload.zone_id) if upload.zone_id else None
-            events = rule_engine.evaluate(detections, upload_id, zone)
-            events = create_safety_events(db, events)
-
-        alerts: list[AlertRecord] = []
-        if request.createAlerts and events:
-            new_alerts = alert_service.generate_alerts(events)
-            # A newly created violation may push its zone group over the weekly
-            # repeated-violation threshold; see ZONE_CAMERA_PLAN.md#4.
-            new_alerts += repeated_violation_service.generate_repeated_violation_alerts(
-                db, events
-            )
-            alerts = create_alerts(db, new_alerts)
+        # Zone-aware rules: an upload assigned to a zone (directly or via its
+        # camera) gets that zone's required-PPE + severity overrides.
+        zone = get_zone(db, upload.zone_id) if upload.zone_id else None
+        result = run_analysis_pipeline(
+            db,
+            upload_id,
+            frames,
+            frame_url_by_timestamp,
+            provider=request.modelProvider,
+            create_events=request.createEvents,
+            create_alerts_flag=request.createAlerts,
+            zone=zone,
+        )
+        detections = result["detections"]
+        events = result["events"]
+        alerts = result["alerts"]
+        source = result["source"]
+        comparison = (
+            _serialize_comparison(upload_id, result["comparison"])
+            if result["comparison"] is not None
+            else None
+        )
 
         update_upload_status(db, upload_id, "processed")
     except Exception as exc:

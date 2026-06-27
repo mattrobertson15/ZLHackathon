@@ -16,4 +16,6 @@ class Upload(Base):
     notes = Column(String, nullable=True)
     status = Column(String, nullable=False, default="uploaded")
     # uploaded -> processing -> processed -> failed
+    source_type = Column(String, nullable=False, default="upload")
+    # upload | camera  (camera captures reuse the upload pipeline)
     uploaded_at = Column(DateTime, nullable=False)

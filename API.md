@@ -105,6 +105,7 @@ Response
     "zoneId": "loading-dock",
     "cameraId": null,
     "zoneDisplayName": "Loading Dock",
+    "sourceType": "upload",
     "notes": null,
     "uploadedAt": "2026-06-27T14:30:00Z",
     "status": "uploaded"
@@ -114,6 +115,10 @@ Response
 The `zoneDisplayName` field is a convenience resolved from `zoneId` so clients
 can label uploads without a second request. Upload objects carry these same
 fields wherever they are embedded (events, demo scenario, etc.).
+
+`sourceType` is `"upload"` for direct file uploads and `"camera"` for rows
+created by the live camera monitor (with `cameraId` set to the originating
+camera). See [Cameras](#cameras).
 
 GET /uploads
 
@@ -177,28 +182,119 @@ Get a single zone. Returns `404 ZONE_NOT_FOUND` if missing.
 
 Cameras
 
-GET /cameras
+A camera is a zone-assigned location record that can optionally be a live RTSP
+feed. Cameras without an `rtspUrl` are pure location records (e.g. the seeded
+demo cameras) used so uploads can inherit a zone. When `rtspUrl` is set, the
+background monitor can capture frames on an interval and raise events; each
+capture is recorded as a `camera`-sourced Upload that **inherits the camera's
+zone**, so live events get the same zone-aware rules and repeated-violation
+detection as uploads. See
+[ARCHITECTURE.md](ARCHITECTURE.md#12-camera--rtsp-ingestion-layer) and
+[ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md).
 
-List cameras and their zone assignments. Cameras are seeded for the demo;
-authenticated camera ingest and API-key issuance are out of scope for this pass.
+Note: the live monitor only runs on a persistent host, not Vercel.
 
-Response
+Camera object
 
 {
-  "cameras": [
-    {
-      "id": "cam-02",
-      "displayName": "Dock Camera North",
-      "zoneId": "loading-dock",
-      "status": "active",
-      "createdAt": "2026-06-27T14:30:00Z"
-    }
-  ]
+  "id": "cam-02",
+  "displayName": "Dock Camera North",
+  "zoneId": "loading-dock",
+  "status": "active",                  // registry state: active | inactive
+  "createdAt": "2026-06-27T14:30:00Z",
+  "rtspUrl": "rtsp://mediamtx:8554/worksite-demo",  // null for location-only cameras
+  "streamStatus": "live",              // feed connectivity: offline | live | error
+  "monitoring": true,
+  "captureIntervalSeconds": 15,
+  "lastCaptureAt": "2026-06-27T16:40:05Z",
+  "lastError": null,
+  "recentEventCount": 7
 }
+
+POST /cameras
+
+Register a camera. `rtspUrl` is optional (omit for a location-only camera);
+`zoneId` is optional but, if given, must reference an existing zone.
+
+Request
+
+{
+  "displayName": "Loading Dock Camera",
+  "rtspUrl": "rtsp://mediamtx:8554/worksite-demo",  // optional
+  "zoneId": "loading-dock",                          // optional
+  "captureIntervalSeconds": 15                        // optional, default 15, min 5
+}
+
+Response: { "camera": { ...Camera } }
+
+Errors: INVALID_INTERVAL (< 5), ZONE_NOT_FOUND (unknown zoneId).
+
+GET /cameras
+
+List all cameras (seeded location cameras + any registered RTSP feeds).
+
+Response: { "cameras": [ { ...Camera } ] }
 
 GET /cameras/{camera_id}
 
 Get a single camera. Returns `404 CAMERA_NOT_FOUND` if missing.
+
+Response: { "camera": { ...Camera } }
+
+GET /cameras/{camera_id}/detail
+
+Camera plus its recent captures and events (for the camera UI).
+
+Response
+
+{
+  "camera": { ...Camera },
+  "captures": [ { ...Upload } ],     // recent camera-sourced uploads (sourceType="camera")
+  "events": [ { ...SafetyEvent } ]   // recent events from this camera
+}
+
+POST /cameras/{camera_id}/start
+
+Enable continuous monitoring and run one immediate capture. Sets `streamStatus`
+to `live` on success or `error` (with `lastError`) if the stream can't be
+reached. Requires the camera to have an `rtspUrl`.
+
+Response: { "camera": { ...Camera } }
+
+Errors: NO_RTSP_URL (location-only camera), CAMERA_NOT_FOUND.
+
+POST /cameras/{camera_id}/stop
+
+Disable monitoring; sets `streamStatus` to `offline`.
+
+Response: { "camera": { ...Camera } }
+
+POST /cameras/{camera_id}/capture
+
+Capture and analyze once, immediately (independent of the monitoring loop).
+
+Response
+
+{
+  "camera": { ...Camera },
+  "detections": 4,
+  "events": [ { ...SafetyEvent } ]
+}
+
+Errors: NO_RTSP_URL, CAPTURE_FAILED (502) if the stream can't be opened/read.
+
+GET /cameras/{camera_id}/snapshot
+
+Returns the most recent captured frame as `image/jpeg` (binary). The Cameras
+page polls this with a cache-busting query param for a near-live preview.
+
+Errors: NO_SNAPSHOT (404) if no capture exists yet.
+
+DELETE /cameras/{camera_id}
+
+Remove a camera. Its previously created events are left intact.
+
+Response: { "status": "success", "message": "Camera 'cam-02' removed." }
 
 Inference
 
@@ -778,6 +874,10 @@ EVENT_NOT_FOUND
 ALERT_NOT_FOUND
 SUMMARY_NOT_FOUND
 SUMMARY_GENERATION_FAILED
+INVALID_INTERVAL
+NO_RTSP_URL
+CAPTURE_FAILED
+NO_SNAPSHOT
 
 Notes for Hackathon Implementation
 

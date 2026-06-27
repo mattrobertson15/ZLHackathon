@@ -58,6 +58,7 @@ def _serialize_upload(upload: Upload, zone_display_name: str = None) -> dict:
         "zoneId": upload.zone_id,
         "cameraId": upload.camera_id,
         "zoneDisplayName": zone_display_name,
+        "sourceType": getattr(upload, "source_type", None) or "upload",
         "notes": upload.notes,
         "uploadedAt": to_iso(upload.uploaded_at),
         "status": upload.status,

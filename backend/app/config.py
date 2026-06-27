@@ -9,6 +9,14 @@ if env_local.exists():
 else:
     load_dotenv()
 
+# RTSP-over-TCP is far more reliable than the UDP default for OpenCV's ffmpeg
+# backend. Set before cv2 is imported anywhere so VideoCapture picks it up.
+os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;tcp")
+
+# Convenience default for the demo emulator (mediamtx + ffmpeg). Inside
+# docker-compose the backend reaches the stream over the private network.
+DEMO_RTSP_URL = os.getenv("DEMO_RTSP_URL", "rtsp://localhost:8554/worksite-demo")
+
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
 ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "")

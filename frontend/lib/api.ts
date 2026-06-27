@@ -10,6 +10,7 @@ import {
   ModelProvider,
   Zone,
   Camera,
+  CameraDetail,
   UploadResults,
 } from "./types";
 import type { DemoScenarioResponse } from "./types";
@@ -180,15 +181,10 @@ export async function updateAlert(
   return data.alert;
 }
 
-// Zones & Cameras API
+// Zones API
 export async function listZones(): Promise<Zone[]> {
   const data = await apiCall<{ zones: Zone[] }>("/zones");
   return data.zones;
-}
-
-export async function listCameras(): Promise<Camera[]> {
-  const data = await apiCall<{ cameras: Camera[] }>("/cameras");
-  return data.cameras;
 }
 
 // Analytics API
@@ -239,6 +235,71 @@ export async function getSummary(summaryId: string): Promise<SafetySummary> {
     `/summaries/${summaryId}`
   );
   return data.summary;
+}
+
+// Cameras API
+export async function listCameras(): Promise<Camera[]> {
+  const data = await apiCall<{ cameras: Camera[] }>("/cameras");
+  return data.cameras;
+}
+
+export async function getCamera(cameraId: string): Promise<CameraDetail> {
+  return apiCall<CameraDetail>(`/cameras/${cameraId}/detail`);
+}
+
+export async function createCamera(params: {
+  displayName: string;
+  rtspUrl?: string;
+  zoneId?: string;
+  captureIntervalSeconds?: number;
+}): Promise<Camera> {
+  const data = await apiCall<{ camera: Camera }>("/cameras", {
+    method: "POST",
+    body: JSON.stringify({
+      displayName: params.displayName,
+      rtspUrl: params.rtspUrl || undefined,
+      zoneId: params.zoneId || undefined,
+      captureIntervalSeconds: params.captureIntervalSeconds ?? 15,
+    }),
+  });
+  return data.camera;
+}
+
+export async function startCamera(cameraId: string): Promise<Camera> {
+  const data = await apiCall<{ camera: Camera }>(`/cameras/${cameraId}/start`, {
+    method: "POST",
+  });
+  return data.camera;
+}
+
+export async function stopCamera(cameraId: string): Promise<Camera> {
+  const data = await apiCall<{ camera: Camera }>(`/cameras/${cameraId}/stop`, {
+    method: "POST",
+  });
+  return data.camera;
+}
+
+export async function captureCamera(
+  cameraId: string
+): Promise<{ camera: Camera; detections: number; events: SafetyEvent[] }> {
+  return apiCall<{ camera: Camera; detections: number; events: SafetyEvent[] }>(
+    `/cameras/${cameraId}/capture`,
+    { method: "POST" }
+  );
+}
+
+export async function deleteCamera(
+  cameraId: string
+): Promise<{ status: string; message: string }> {
+  return apiCall<{ status: string; message: string }>(`/cameras/${cameraId}`, {
+    method: "DELETE",
+  });
+}
+
+// Snapshot is a binary JPEG endpoint; build a cache-busted URL for an <img>.
+export function cameraSnapshotUrl(cameraId: string, tick?: number): string {
+  const bust = tick !== undefined ? `?t=${tick}` : "";
+  return `${API_BASE_URL}/cameras/${cameraId}/snapshot${bust}`;
 }
 
 // Admin API

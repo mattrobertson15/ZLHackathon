@@ -65,6 +65,7 @@ export interface Upload {
   cameraId?: string | null;
   zoneDisplayName?: string | null;
   notes?: string | null;
+  sourceType?: "upload" | "camera";
   uploadedAt: string;
   status: "uploaded" | "processing" | "processed" | "failed";
 }
@@ -77,12 +78,32 @@ export interface Zone {
   createdAt: string;
 }
 
+// Connectivity of a camera's live RTSP feed (only meaningful when monitored).
+export type CameraStreamStatus = "offline" | "live" | "error";
+
+// Unified Camera: a zone-assigned location record that can also be a live RTSP
+// feed. Registry fields (displayName/zoneId/status) come from the location
+// schema; the rtsp*/monitoring/* fields drive continuous monitoring.
 export interface Camera {
   id: string;
   displayName: string;
-  zoneId: string;
+  zoneId?: string | null;
   status: "active" | "inactive";
   createdAt: string;
+  // Live RTSP feed (optional — null/offline for location-only cameras)
+  rtspUrl?: string | null;
+  streamStatus: CameraStreamStatus;
+  monitoring: boolean;
+  captureIntervalSeconds: number;
+  lastCaptureAt?: string | null;
+  lastError?: string | null;
+  recentEventCount: number;
+}
+
+export interface CameraDetail {
+  camera: Camera;
+  captures: Upload[];
+  events: SafetyEvent[];
 }
 
 export type EventType = "positive_observation" | "ppe_violation" | "uncertain_review";

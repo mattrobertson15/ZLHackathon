@@ -16,6 +16,7 @@ from app.routes import (
     uploads,
     zones,
 )
+from app.services import camera_monitor
 
 app = FastAPI(title="Safety Sentinel API")
 
@@ -42,6 +43,7 @@ async def http_exception_handler(request, exc: HTTPException):
 @app.on_event("startup")
 def on_startup():
     init_db()
+
     from app.db.database import SessionLocal
     from app.db.seeds import seed_location_data
 
@@ -50,6 +52,13 @@ def on_startup():
         seed_location_data(db)
     finally:
         db.close()
+
+    camera_monitor.start_monitor()
+
+
+@app.on_event("shutdown")
+def on_shutdown():
+    camera_monitor.stop_monitor()
 
 
 app.include_router(uploads.router)

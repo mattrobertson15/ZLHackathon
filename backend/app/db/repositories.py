@@ -31,6 +31,68 @@ def list_cameras(db: Session) -> list[Camera]:
     return db.query(Camera).order_by(Camera.display_name.asc()).all()
 
 
+# --- Camera writes + monitoring (RTSP feature) -----------------------------
+
+def create_camera(db: Session, camera: Camera) -> Camera:
+    db.add(camera)
+    db.commit()
+    db.refresh(camera)
+    return camera
+
+
+def list_monitoring_cameras(db: Session) -> list[Camera]:
+    return db.query(Camera).filter(Camera.monitoring.is_(True)).all()
+
+
+def update_camera(db: Session, camera: Camera) -> Camera:
+    db.commit()
+    db.refresh(camera)
+    return camera
+
+
+def delete_camera(db: Session, camera_id: str) -> bool:
+    camera = get_camera(db, camera_id)
+    if camera is None:
+        return False
+    db.delete(camera)
+    db.commit()
+    return True
+
+
+def list_uploads_for_camera(db: Session, camera_id: str, limit: Optional[int] = None) -> list[Upload]:
+    query = (
+        db.query(Upload)
+        .filter(Upload.camera_id == camera_id)
+        .order_by(Upload.uploaded_at.desc())
+    )
+    if limit:
+        query = query.limit(limit)
+    return query.all()
+
+
+def count_events_for_camera(db: Session, camera_id: str) -> int:
+    return (
+        db.query(SafetyEvent)
+        .join(Upload, SafetyEvent.upload_id == Upload.id)
+        .filter(Upload.camera_id == camera_id)
+        .count()
+    )
+
+
+def list_events_for_camera(db: Session, camera_id: str, limit: Optional[int] = None) -> list[SafetyEvent]:
+    query = (
+        db.query(SafetyEvent)
+        .join(Upload, SafetyEvent.upload_id == Upload.id)
+        .filter(Upload.camera_id == camera_id)
+        .order_by(SafetyEvent.created_at.desc())
+    )
+    if limit:
+        query = query.limit(limit)
+    return query.all()
+
+
+# --- Uploads ---------------------------------------------------------------
+
 def create_upload(db: Session, upload: Upload) -> Upload:
     db.add(upload)
     db.commit()

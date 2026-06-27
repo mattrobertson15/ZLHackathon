@@ -1,0 +1,4 @@
+# Generated demo footage — rebuild with ./make-sample-video.sh
+media/*.mp4
+media/*.mov
+media/*.mkv

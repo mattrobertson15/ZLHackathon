@@ -188,21 +188,36 @@ Included in MVP
 * Generate AI safety summaries
 * Download markdown safety reports
 * Display mock alerts in an alert center (incl. repeated-violation alerts)
+* Monitor an emulated live CCTV (RTSP) camera feed and raise events continuously
 
-See [ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md) for the combined zone/camera and
-repeated-violation design.
+Live Camera Emulation (Demo)
+
+Safety Sentinel can treat an RTSP camera feed as a source in addition to file
+uploads. For demos, a camera is emulated by looping a video file into an RTSP
+server (ffmpeg + mediamtx) that the backend consumes like a real CCTV stream.
+Register the feed on the Cameras page, start monitoring, and the backend
+captures frames on an interval and raises PPE events automatically — flowing
+into the same dashboard, events, and alerts. A monitored camera belongs to a
+zone, so its live captures get the same zone-aware PPE rules and
+repeated-violation detection as uploads. This always-on stack runs via the root
+`docker-compose.yml` on a persistent container host (not Vercel, whose
+serverless model can't run a continuous monitor). See
+[emulator/README.md](emulator/README.md),
+[ARCHITECTURE.md](ARCHITECTURE.md#12-camera--rtsp-ingestion-layer), and
+[ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md) for the combined zone/camera design.
 
 Not Included in MVP
 
-* Live camera stream ingestion
-* Authenticated camera ingest / API-key issuance (cameras are seeded for assignment)
+* Production-grade live ingestion (multi-camera scale, HA, on-prem edge) — basic
+  RTSP ingestion is demo-emulated; production hardening is out of scope
+* Authenticated camera ingest / API-key issuance
 * Facial recognition
 * Employee identification (repeated-violation detection is zone-based only)
 * Real SMS/email/Slack alerts
 * Production-grade incident escalation
 * HR or badge-system integration
 * Automated disciplinary workflows
-* Zone/camera admin UI (zones and cameras are seeded)
+* Zone admin UI (zones are seeded; cameras can be registered for live RTSP)
 
 Tech Stack
 

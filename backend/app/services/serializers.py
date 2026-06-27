@@ -6,12 +6,21 @@ from app.utils.timestamps import to_iso
 
 
 def serialize_upload(upload: Upload) -> dict:
+    """Basic upload serializer (no resolved zoneDisplayName).
+
+    The uploads route uses its own serializer to attach zoneDisplayName; this
+    shared one is used where uploads are embedded without a zone-name lookup
+    (e.g. camera captures, admin responses).
+    """
     return {
         "id": upload.id,
         "fileName": upload.file_name,
         "fileType": upload.file_type,
         "fileUrl": upload.file_url,
         "locationLabel": upload.location_label,
+        "zoneId": getattr(upload, "zone_id", None),
+        "cameraId": getattr(upload, "camera_id", None),
+        "sourceType": getattr(upload, "source_type", None) or "upload",
         "notes": upload.notes,
         "uploadedAt": to_iso(upload.uploaded_at),
         "status": upload.status,
