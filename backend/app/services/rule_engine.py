@@ -42,28 +42,27 @@ def evaluate(detections: list[DetectionResult], upload_id: str) -> list[SafetyEv
 
     events: list[SafetyEvent] = []
     for frame_timestamp, frame_detections in frames.items():
-        person = next((d for d in frame_detections if d.label == "person"), None)
-        if person is None:
-            continue
-
         ppe_detections = [d for d in frame_detections if d.label in _PPE_RULES]
-        if not ppe_detections:
+        person = next((d for d in frame_detections if d.label == "person"), None)
+
+        if ppe_detections:
+            # PPE labels imply a person is present; create events directly.
+            for detection in ppe_detections:
+                rule = _PPE_RULES[detection.label]
+                events.append(
+                    _build_event(
+                        upload_id,
+                        detection,
+                        rule["eventType"],
+                        rule["violationType"],
+                        rule["severity"],
+                        rule["suggestedAction"],
+                    )
+                )
+        elif person is not None:
+            # Person visible but no PPE status could be determined.
             events.append(_build_event(upload_id, person, "uncertain_review", None, "medium",
                                         "PPE status unclear. Manual review recommended."))
-            continue
-
-        for detection in ppe_detections:
-            rule = _PPE_RULES[detection.label]
-            events.append(
-                _build_event(
-                    upload_id,
-                    detection,
-                    rule["eventType"],
-                    rule["violationType"],
-                    rule["severity"],
-                    rule["suggestedAction"],
-                )
-            )
 
     return events
 
