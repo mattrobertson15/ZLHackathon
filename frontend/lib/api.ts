@@ -228,7 +228,11 @@ export async function generateSummary(
     "/summaries/generate",
     {
       method: "POST",
-      body: JSON.stringify({ period, startDate, endDate }),
+      body: JSON.stringify({
+          period,
+          startDate: startDate.includes("T") ? startDate : `${startDate}T00:00:00`,
+          endDate: endDate.includes("T") ? endDate : `${endDate}T23:59:59`,
+        }),
     }
   );
   return data.summary;

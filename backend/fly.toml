@@ -7,7 +7,7 @@ primary_region = "sjc"
   PORT = "8000"
   UPLOAD_STORAGE_PATH = "/data/uploads"
   DATABASE_URL = "sqlite:////data/safety_sentinel.db"
-  OPENCV_FFMPEG_CAPTURE_OPTIONS = "rtsp_transport;tcp"
+  OPENCV_FFMPEG_CAPTURE_OPTIONS = "rtsp_transport;tcp|fflags;nobuffer|flags;low_delay"
 
 [http_service]
   internal_port = 8000

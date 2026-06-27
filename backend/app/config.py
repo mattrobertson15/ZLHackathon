@@ -11,7 +11,7 @@ else:
 
 # RTSP-over-TCP is far more reliable than the UDP default for OpenCV's ffmpeg
 # backend. Set before cv2 is imported anywhere so VideoCapture picks it up.
-os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;tcp")
+os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;tcp|fflags;nobuffer|flags;low_delay")
 
 # Convenience default for the demo emulator (mediamtx + ffmpeg). Inside
 # docker-compose the backend reaches the stream over the private network.
