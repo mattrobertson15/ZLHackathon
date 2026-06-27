@@ -43,7 +43,13 @@ async function apiCall<T>(
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || "API request failed");
+    throw new Error(
+      error.detail?.error?.message ||
+      error.detail?.message ||
+      error.error?.message ||
+      (typeof error.detail === "string" ? error.detail : null) ||
+      "API request failed"
+    );
   }
 
   return response.json();

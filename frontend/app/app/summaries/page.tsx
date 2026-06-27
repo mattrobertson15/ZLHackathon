@@ -133,19 +133,19 @@ export default function SummariesPage() {
                 <p className="text-xs font-semibold text-gray-600 uppercase">Quick Select</p>
                 <button
                   onClick={() => setQuickDate(7, "weekly")}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded transition-colors"
+                  className="w-full text-left px-3 py-2 text-sm text-gray-900 hover:bg-gray-100 rounded transition-colors"
                 >
                   This Week (7 days)
                 </button>
                 <button
                   onClick={() => setQuickDate(30, "monthly")}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded transition-colors"
+                  className="w-full text-left px-3 py-2 text-sm text-gray-900 hover:bg-gray-100 rounded transition-colors"
                 >
                   This Month (30 days)
                 </button>
                 <button
-                  onClick={() => setQuickDate(1, "daily")}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded transition-colors"
+                  onClick={() => setQuickDate(0, "daily")}
+                  className="w-full text-left px-3 py-2 text-sm text-gray-900 hover:bg-gray-100 rounded transition-colors"
                 >
                   Today
                 </button>

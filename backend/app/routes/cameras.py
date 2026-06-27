@@ -120,9 +120,9 @@ def test_stream(request: TestStreamRequest):
     """Probe an RTSP URL by grabbing a single frame, without registering a camera.
 
     Lets the user confirm the phone/relay feed is reachable before they start
-    monitoring. Returns the frame dimensions on success, or a friendly failure
-    message (the most common cause is the backend not being able to reach the
-    stream). See API.md#test-rtsp-stream.
+    monitoring. Returns the frame dimensions on success, or the actual error on
+    failure (the most common cause is path mismatch between the RTMP publisher
+    and the RTSP URL, or the stream not being live). See API.md#test-rtsp-stream.
     """
     scratch_dir = tempfile.mkdtemp(prefix="test_stream_", dir=UPLOAD_STORAGE_PATH)
     try:
@@ -140,17 +140,67 @@ def test_stream(request: TestStreamRequest):
             "height": int(height),
             "message": "Stream connected successfully.",
         }
-    except Exception:
+    except ValueError as exc:
         return {
             "status": "failed",
-            "message": (
-                "Unable to read a frame from the RTSP stream. Make sure the stream "
-                "is live and reachable from the backend (for a phone, push to the "
-                "relay rather than exposing the phone's LAN address)."
+            "message": str(exc),
+            "hint": (
+                "Make sure the stream is live and reachable from the backend. "
+                "For Streamlabs: set Server=rtmp://safety-sentinel-relay.fly.dev:1935/live "
+                "and Stream Key=phone-demo, then read from "
+                "rtsp://safety-sentinel-relay.internal:8554/live/phone-demo. "
+                "Use GET /cameras/relay-streams to see which paths mediamtx has live."
+            ),
+        }
+    except Exception as exc:
+        return {
+            "status": "failed",
+            "message": f"{type(exc).__name__}: {exc}",
+            "hint": (
+                "Unexpected error — check that the relay is deployed and reachable. "
+                "Use GET /cameras/relay-streams to confirm mediamtx connectivity."
             ),
         }
     finally:
         shutil.rmtree(scratch_dir, ignore_errors=True)
+
+
+@router.get("/relay-streams")
+def relay_streams():
+    """Proxy the mediamtx API to show which RTMP/RTSP paths are currently live.
+
+    Useful for confirming a phone publisher (Streamlabs/Larix) is actually
+    reaching the relay before debugging RTSP read failures. Returns the path
+    list from mediamtx's /v3/paths/list endpoint, or an error if the relay
+    is unreachable from this backend instance.
+    """
+    import json
+    import urllib.request
+
+    try:
+        url = "http://safety-sentinel-relay.internal:9997/v3/paths/list"
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            data = json.loads(resp.read())
+        paths = [
+            {
+                "name": p["name"],
+                "ready": p.get("ready", False),
+                "readyTime": p.get("readyTime"),
+                "readers": len(p.get("readers", [])),
+                "bytesReceived": p.get("bytesReceived", 0),
+            }
+            for p in data.get("items", [])
+        ]
+        return {"relay": "reachable", "paths": paths}
+    except Exception as exc:
+        return {
+            "relay": "unreachable",
+            "error": f"{type(exc).__name__}: {exc}",
+            "note": (
+                "The relay is only reachable from within Fly's private network. "
+                "If the backend is running locally, this endpoint will always fail."
+            ),
+        }
 
 
 @router.get("/{camera_id}")

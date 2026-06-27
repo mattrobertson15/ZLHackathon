@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   listCameras,
@@ -54,6 +54,15 @@ function CameraCard({
 }) {
   const [busy, setBusy] = useState(false);
   const [snapshotFailed, setSnapshotFailed] = useState(false);
+
+  // Reset the error flag whenever a new capture lands so the img retries.
+  const prevCaptureAt = useRef(camera.lastCaptureAt);
+  useEffect(() => {
+    if (camera.lastCaptureAt !== prevCaptureAt.current) {
+      prevCaptureAt.current = camera.lastCaptureAt;
+      setSnapshotFailed(false);
+    }
+  }, [camera.lastCaptureAt]);
 
   const run = async (fn: () => Promise<unknown>) => {
     try {

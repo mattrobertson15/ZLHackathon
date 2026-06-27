@@ -31,6 +31,14 @@ def capture_frames_from_rtsp(
     os.makedirs(output_dir, exist_ok=True)
 
     capture = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
+    # Set explicit timeouts so a dead/unreachable stream fails fast rather than
+    # hanging until the OS TCP timeout (which can be 2+ minutes).
+    try:
+        capture.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 10_000)
+        capture.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 5_000)
+    except Exception:
+        pass  # older OpenCV builds may not support these properties
+
     try:
         if not capture.isOpened():
             raise ValueError(f"Could not open RTSP stream: {rtsp_url}")
