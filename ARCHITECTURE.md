@@ -133,16 +133,18 @@ If Qwen Vision is not reliable enough for bounding boxes or class-level PPE dete
 Current Implementation Status
 
 `app/services/vision_service.py` implements `run_inference(frames)`, which is the
-single entry point the `/uploads/{upload_id}/analyze` endpoint calls. Today it
-always routes to `_generate_mock_detections`, a deterministic-per-frame mock
-generator that produces realistic person/PPE detection mixes for demo purposes.
+single entry point the `/uploads/{upload_id}/analyze` endpoint calls.
 
-The real Qwen3-VL30B client (`_call_qwen_vision`) is a deferred stub that raises
-`NotImplementedError`. Wiring it up requires `QWEN_API_KEY` plus a verified
-request/response contract for the model — tracked as Phase 3.5 in todo.md. Once
-implemented, `run_inference` will call it first when `QWEN_API_KEY` is set and
-fall back to the mock generator if the call fails, preserving the existing
-"mock fallback for demo reliability" behavior.
+When `QWEN_API_KEY` is set, the real Qwen3-VL30B client (`_call_qwen_vision`)
+sends each frame to the Qwen API via `dashscope.aliyuncs.com`. The API returns
+structured JSON with detections for person, helmet, no_helmet, vest, and no_vest.
+If the Qwen call succeeds, results are parsed and returned with source="qwen_vision".
+If the Qwen call fails for any reason, `_call_qwen_vision` falls back to the mock
+generator for that frame, preserving demo reliability.
+
+When `QWEN_API_KEY` is not set, `run_inference` routes directly to
+`_generate_mock_detections`, a deterministic-per-frame mock generator that produces
+realistic person/PPE detection mixes.
 
 4. Detection Parser
 

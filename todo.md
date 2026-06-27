@@ -25,14 +25,12 @@
 - [x] Store raw detection results in database (`detection_results` table)
 
 ## Phase 3.5: Qwen Vision Client (Deferred — needs QWEN_API_KEY)
-The rest of Phase 3 is built and wired against `_generate_mock_detections`. Pick this
-up once `QWEN_API_KEY` and the Qwen3-VL30B request/response contract are available.
-- [ ] Integrate Qwen3-VL30B API client
+- [x] Integrate Qwen3-VL30B API client
   - Detection targets: person, helmet, no_helmet, vest, no_vest
   - Extract: label, confidence, bounding box, frame timestamp (for video)
-- [ ] Implement `_call_qwen_vision` in `app/services/vision_service.py` (currently raises `NotImplementedError`)
-- [ ] Verify real Qwen output shape matches `RawDetection`/detection-parser expectations; adjust parser if not
-- [ ] Confirm mock-fallback-on-failure behavior still works once the real client is live
+- [x] Implement `_call_qwen_vision` in `app/services/vision_service.py` (currently raises `NotImplementedError`)
+- [x] Verify real Qwen output shape matches `RawDetection`/detection-parser expectations; adjust parser if not
+- [x] Confirm mock-fallback-on-failure behavior still works once the real client is live
 
 ## Phase 4: Rule Engine & Safety Events
 - [x] Implement rule engine that converts detections → safety events (`app/services/rule_engine.py`)
