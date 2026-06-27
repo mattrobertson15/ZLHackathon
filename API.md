@@ -222,12 +222,44 @@ Request
   "displayName": "Loading Dock Camera",
   "rtspUrl": "rtsp://mediamtx:8554/worksite-demo",  // optional
   "zoneId": "loading-dock",                          // optional
-  "captureIntervalSeconds": 15                        // optional, default 15, min 5
+  "captureIntervalSeconds": 15                        // optional, default 15, min 1
 }
 
 Response: { "camera": { ...Camera } }
 
-Errors: INVALID_INTERVAL (< 5), ZONE_NOT_FOUND (unknown zoneId).
+Errors: INVALID_INTERVAL (< 1), ZONE_NOT_FOUND (unknown zoneId).
+
+Tip: use `1`–`2` seconds for a snappy live demo (e.g. a walk-by); larger values
+reduce inference load for always-on monitoring.
+
+POST /cameras/test-stream
+
+Probe an RTSP URL by grabbing a single frame, without registering a camera. Lets
+the user confirm a feed (e.g. a phone pushed to the relay) is reachable from the
+backend before starting monitoring. Always returns 200; the `status` field
+reports the outcome.
+
+Request
+
+{
+  "rtspUrl": "rtsp://safety-sentinel-relay.internal:8554/phone-demo"
+}
+
+Response (success)
+
+{
+  "status": "connected",
+  "width": 1280,
+  "height": 720,
+  "message": "Stream connected successfully."
+}
+
+Response (failure)
+
+{
+  "status": "failed",
+  "message": "Unable to read a frame from the RTSP stream. Make sure the stream is live and reachable from the backend (for a phone, push to the relay rather than exposing the phone's LAN address)."
+}
 
 GET /cameras
 

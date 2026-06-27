@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -89,6 +89,53 @@ def list_events_for_camera(db: Session, camera_id: str, limit: Optional[int] = N
     if limit:
         query = query.limit(limit)
     return query.all()
+
+
+def find_recent_open_violation_for_camera(
+    db: Session,
+    camera_id: str,
+    violation_type: str,
+    window_seconds: int,
+    exclude_upload_id: Optional[str] = None,
+) -> Optional[SafetyEvent]:
+    """Most recent still-open violation of ``violation_type`` on this camera within
+    ``window_seconds``. Used to deduplicate live captures so a person who lingers
+    in frame doesn't spawn a fresh event/alert every capture cycle. Pass
+    ``exclude_upload_id`` to ignore events from the current capture.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=window_seconds)
+    query = (
+        db.query(SafetyEvent)
+        .join(Upload, SafetyEvent.upload_id == Upload.id)
+        .filter(Upload.camera_id == camera_id)
+        .filter(SafetyEvent.event_type == "ppe_violation")
+        .filter(SafetyEvent.violation_type == violation_type)
+        .filter(SafetyEvent.status == "open")
+        .filter(SafetyEvent.created_at >= cutoff)
+    )
+    if exclude_upload_id:
+        query = query.filter(SafetyEvent.upload_id != exclude_upload_id)
+    return query.order_by(SafetyEvent.created_at.desc()).first()
+
+
+def delete_safety_events_with_alerts(db: Session, event_ids: list[str]) -> int:
+    """Delete the given safety events and any alerts that reference them.
+
+    Used by the live-capture dedup to discard duplicate violation events the
+    rule engine produced for the same person across frames/cycles.
+    """
+    if not event_ids:
+        return 0
+    db.query(AlertRecord).filter(
+        AlertRecord.safety_event_id.in_(event_ids)
+    ).delete(synchronize_session=False)
+    deleted = (
+        db.query(SafetyEvent)
+        .filter(SafetyEvent.id.in_(event_ids))
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+    return deleted
 
 
 # --- Uploads ---------------------------------------------------------------

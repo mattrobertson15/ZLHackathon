@@ -201,8 +201,14 @@ into the same dashboard, events, and alerts. A monitored camera belongs to a
 zone, so its live captures get the same zone-aware PPE rules and
 repeated-violation detection as uploads. This always-on stack runs via the root
 `docker-compose.yml` on a persistent container host (not Vercel, whose
-serverless model can't run a continuous monitor). See
-[emulator/README.md](emulator/README.md),
+serverless model can't run a continuous monitor).
+
+For the live **phone** demo (walk past the camera without a hard hat), a phone
+pushes its stream to a MediaMTX relay and the backend pulls it over Fly's private
+network — the cloud can't dial into a phone on Wi-Fi, so the phone publishes
+outbound instead. Use **Test Stream** on the Cameras page to verify the feed, and
+watch the red "Live Violation Detected" banner on the camera detail page. See
+[relay/README.md](relay/README.md), [emulator/README.md](emulator/README.md),
 [ARCHITECTURE.md](ARCHITECTURE.md#12-camera--rtsp-ingestion-layer), and
 [ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md) for the combined zone/camera design.
 

@@ -20,6 +20,8 @@ from app.config import IS_VERCEL, UPLOAD_STORAGE_PATH
 from app.db.database import SessionLocal
 from app.db.repositories import (
     create_upload,
+    delete_safety_events_with_alerts,
+    find_recent_open_violation_for_camera,
     get_zone,
     list_monitoring_cameras,
     update_camera,
@@ -33,7 +35,17 @@ from app.utils.rtsp_capture import capture_frames_from_rtsp
 from app.utils.timestamps import now_utc
 
 # How often the loop wakes up to check which cameras are due for a capture.
-MONITOR_TICK_SECONDS = 3.0
+# Kept low so a 1–2s capture interval (snappy walk-by demo) is actually honored.
+MONITOR_TICK_SECONDS = 1.0
+
+# Suppress duplicate violation events/alerts for the same person lingering in
+# frame: at most one event per (camera, violation_type) within this window.
+DEDUP_WINDOW_SECONDS = 30
+
+# Live captures favor a snappy cycle over many frames; one or two frames is
+# enough to catch a walk-by while keeping inference cost and latency low.
+LIVE_CAPTURE_NUM_FRAMES = 2
+LIVE_CAPTURE_SPACING_SECONDS = 0.5
 
 _stop_event: threading.Event | None = None
 _thread: threading.Thread | None = None
@@ -66,7 +78,12 @@ def capture_and_analyze(db: Session, camera: Camera) -> dict:
     upload = create_upload(db, upload)
 
     try:
-        captured = capture_frames_from_rtsp(camera.rtsp_url, frame_dir)
+        captured = capture_frames_from_rtsp(
+            camera.rtsp_url,
+            frame_dir,
+            num_frames=LIVE_CAPTURE_NUM_FRAMES,
+            spacing_seconds=LIVE_CAPTURE_SPACING_SECONDS,
+        )
     except Exception as exc:
         update_upload_status(db, upload_id, "failed")
         camera.stream_status = "error"
@@ -100,6 +117,8 @@ def capture_and_analyze(db: Session, camera: Camera) -> dict:
         zone=zone,
     )
 
+    result["events"] = _dedup_violation_events(db, camera, upload_id, result["events"])
+
     update_upload_status(db, upload_id, "processed")
 
     camera.stream_status = "live"
@@ -108,6 +127,37 @@ def capture_and_analyze(db: Session, camera: Camera) -> dict:
     update_camera(db, camera)
 
     return result
+
+
+def _dedup_violation_events(db, camera, upload_id, events):
+    """Keep at most one open event per (camera, violation_type) within the dedup
+    window. Drops both intra-capture duplicates (the rule engine fires once per
+    frame) and repeats of a violation already open from a recent cycle, deleting
+    the redundant events and their alerts. Non-violation events pass through.
+    """
+    kept = []
+    removed_ids = []
+    seen_types = set()
+    for event in events:
+        if event.event_type != "ppe_violation" or not event.violation_type:
+            kept.append(event)
+            continue
+        vtype = event.violation_type
+        is_duplicate = vtype in seen_types or (
+            find_recent_open_violation_for_camera(
+                db, camera.id, vtype, DEDUP_WINDOW_SECONDS, exclude_upload_id=upload_id
+            )
+            is not None
+        )
+        if is_duplicate:
+            removed_ids.append(event.id)
+            continue
+        seen_types.add(vtype)
+        kept.append(event)
+
+    if removed_ids:
+        delete_safety_events_with_alerts(db, removed_ids)
+    return kept
 
 
 def _is_due(camera: Camera) -> bool:

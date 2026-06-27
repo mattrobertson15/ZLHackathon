@@ -1,0 +1,46 @@
+# MediaMTX relay config for the Safety Sentinel phone-RTSP demo.
+#
+# Direction matters: the phone PUBLISHES (pushes) to the public RTMP ingest, and
+# the backend READS rtsp://safety-sentinel-relay.internal:8554/phone-demo over
+# Fly's private network. Outbound push from the phone traverses any NAT/firewall,
+# so the phone only needs internet — it never has to be reachable from the cloud.
+# See ARCHITECTURE.md#camera--rtsp-ingestion-layer and emulator/README.md.
+
+logLevel: info
+
+# --- Protocols ---------------------------------------------------------------
+# RTMP is the public ingest (simple, firewall-friendly). RTSP is what the
+# backend reads; it stays on the private network (8554 is not exposed in
+# fly.toml). HLS/WebRTC/SRT are off to keep the surface area small.
+rtsp: yes
+rtspAddress: :8554
+rtmp: yes
+rtmpAddress: :1935
+hls: no
+webrtc: no
+srt: no
+api: no
+metrics: no
+
+# --- Authentication (MediaMTX internal users) --------------------------------
+# Reads are unauthenticated but only reachable over the private .internal
+# network (8554 is never published publicly). Publishing REQUIRES credentials so
+# nobody can inject video into the public ingest. Change the publish password
+# before deploying (or override it — see relay/README.md).
+authInternalUsers:
+  - user: any
+    pass:
+    permissions:
+      - action: read
+  - user: phone
+    pass: CHANGE_ME_STRONG_PASSWORD
+    permissions:
+      - action: publish
+
+# --- Paths -------------------------------------------------------------------
+paths:
+  # The live phone feed. Push here from Larix Broadcaster:
+  #   rtmp://safety-sentinel-relay.fly.dev:1935/phone-demo  (user: phone)
+  phone-demo:
+  # Optional fallback: an ffmpeg file loop can publish here (see docker-compose).
+  worksite-demo:

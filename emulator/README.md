@@ -35,6 +35,15 @@ docker compose up --build
 ffprobe rtsp://localhost:8554/worksite-demo     # or open it in VLC
 ```
 
+## Live phone camera (instead of a looped file)
+
+The same relay works with a **live phone** as the publisher — walk past it without
+a hard hat for a believable live demo. The phone *pushes* its stream to MediaMTX
+(outbound, so it works through NAT/Wi-Fi) and the backend pulls it exactly like
+this file emulator. The deployable relay app (config + Fly `fly.toml`) lives in
+[`../relay/`](../relay/) — see [relay/README.md](../relay/README.md) for the phone
+app (Larix Broadcaster), the publish URL, and the Test Stream check.
+
 ## Deploying
 
 The always-on stack (backend + mediamtx + ffmpeg) must run on a persistent
@@ -42,4 +51,6 @@ container host — Fly.io, Render, Railway, or a VM — **not Vercel** (serverle
 can't run the background monitor or hold an RTSP connection). Keep the Vercel
 frontend and point its `NEXT_PUBLIC_API_URL` at the container host's public API
 URL. Inside the host's private network the backend still reaches the feed at
-`rtsp://mediamtx:8554/worksite-demo`, so the RTSP stream itself stays private.
+`rtsp://mediamtx:8554/worksite-demo`, so the RTSP stream itself stays private. For
+the hosted Fly setup (backend app + separate relay app) see
+[relay/README.md](../relay/README.md).

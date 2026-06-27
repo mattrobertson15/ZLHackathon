@@ -11,6 +11,8 @@ import {
   captureCamera,
   deleteCamera,
   cameraSnapshotUrl,
+  testStream,
+  type TestStreamResult,
 } from "@/lib/api";
 import { Camera, CameraStreamStatus, Zone } from "@/lib/types";
 
@@ -206,6 +208,33 @@ export default function CamerasPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // "Test Stream" probe state: Idle | Connecting | Connected | Failed.
+  const [testState, setTestState] = useState<
+    "idle" | "connecting" | "connected" | "failed"
+  >("idle");
+  const [testResult, setTestResult] = useState<TestStreamResult | null>(null);
+
+  const handleTestStream = async () => {
+    if (!rtspUrl.trim()) {
+      setTestState("failed");
+      setTestResult({ status: "failed", message: "Enter an RTSP URL first." });
+      return;
+    }
+    setTestState("connecting");
+    setTestResult(null);
+    try {
+      const result = await testStream(rtspUrl.trim());
+      setTestResult(result);
+      setTestState(result.status === "connected" ? "connected" : "failed");
+    } catch (err) {
+      setTestState("failed");
+      setTestResult({
+        status: "failed",
+        message: err instanceof Error ? err.message : "Test request failed.",
+      });
+    }
+  };
+
   const zoneName = useCallback(
     (id?: string | null) => zones.find((z) => z.id === id)?.displayName,
     [zones]
@@ -332,6 +361,49 @@ export default function CamerasPage() {
               (or <code className="font-mono">rtsp://mediamtx:8554/...</code>{" "}
               inside docker-compose).
             </p>
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleTestStream}
+                disabled={testState === "connecting"}
+                className="bg-gray-100 text-gray-800 text-sm font-semibold py-2 px-4 rounded-lg border border-gray-300 hover:bg-gray-200 disabled:opacity-60 transition-colors"
+              >
+                {testState === "connecting" ? "Connecting…" : "Test Stream"}
+              </button>
+              {testState !== "idle" && (
+                <span
+                  className={`inline-flex items-center gap-1.5 text-sm font-medium ${
+                    testState === "connected"
+                      ? "text-green-700"
+                      : testState === "failed"
+                        ? "text-red-700"
+                        : "text-gray-600"
+                  }`}
+                >
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      testState === "connected"
+                        ? "bg-green-500"
+                        : testState === "failed"
+                          ? "bg-red-500"
+                          : "bg-gray-400 animate-pulse"
+                    }`}
+                  />
+                  {testState === "connecting"
+                    ? "Connecting"
+                    : testResult?.status === "connected"
+                      ? `Connected${
+                          testResult.width && testResult.height
+                            ? ` · ${testResult.width}×${testResult.height}`
+                            : ""
+                        }`
+                      : "Failed"}
+                </span>
+              )}
+            </div>
+            {testResult && testState === "failed" && (
+              <p className="text-xs text-red-600 mt-2">{testResult.message}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -339,11 +411,15 @@ export default function CamerasPage() {
             </label>
             <input
               type="number"
-              min={5}
+              min={1}
               value={interval}
               onChange={(e) => setIntervalSeconds(Number(e.target.value))}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Use 1–2s for a snappy live demo (e.g. a walk-by); larger values
+              reduce inference load for always-on monitoring.
+            </p>
           </div>
           <div className="flex items-end">
             <button

@@ -1,5 +1,8 @@
 import os
+import shutil
+import tempfile
 
+import cv2
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -22,6 +25,7 @@ from app.models.camera import Camera
 from app.services import camera_monitor
 from app.services.serializers import serialize_event, serialize_upload
 from app.utils.ids import generate_id
+from app.utils.rtsp_capture import capture_frames_from_rtsp
 from app.utils.timestamps import now_utc, to_iso
 
 router = APIRouter(prefix="/cameras", tags=["cameras"])
@@ -61,6 +65,10 @@ class CreateCameraRequest(BaseModel):
     captureIntervalSeconds: int = 15
 
 
+class TestStreamRequest(BaseModel):
+    rtspUrl: str
+
+
 def _camera_payload(db: Session, camera: Camera) -> dict:
     return serialize_camera(camera, recent_event_count=count_events_for_camera(db, camera.id))
 
@@ -77,10 +85,10 @@ def _get_or_404(db: Session, camera_id: str) -> Camera:
 
 @router.post("")
 def register_camera(request: CreateCameraRequest, db: Session = Depends(get_db)):
-    if request.captureIntervalSeconds < 5:
+    if request.captureIntervalSeconds < 1:
         raise HTTPException(
             status_code=400,
-            detail=_error("INVALID_INTERVAL", "captureIntervalSeconds must be at least 5."),
+            detail=_error("INVALID_INTERVAL", "captureIntervalSeconds must be at least 1."),
         )
     if request.zoneId and get_zone(db, request.zoneId) is None:
         raise HTTPException(
@@ -106,6 +114,43 @@ def register_camera(request: CreateCameraRequest, db: Session = Depends(get_db))
 @router.get("")
 def get_cameras(db: Session = Depends(get_db)):
     return {"cameras": [_camera_payload(db, c) for c in list_cameras(db)]}
+
+
+@router.post("/test-stream")
+def test_stream(request: TestStreamRequest):
+    """Probe an RTSP URL by grabbing a single frame, without registering a camera.
+
+    Lets the user confirm the phone/relay feed is reachable before they start
+    monitoring. Returns the frame dimensions on success, or a friendly failure
+    message (the most common cause is the backend not being able to reach the
+    stream). See API.md#test-rtsp-stream.
+    """
+    scratch_dir = tempfile.mkdtemp(prefix="test_stream_", dir=UPLOAD_STORAGE_PATH)
+    try:
+        captured = capture_frames_from_rtsp(
+            request.rtspUrl, scratch_dir, num_frames=1, spacing_seconds=0
+        )
+        frame = cv2.imread(captured[0]["framePath"])
+        if frame is None:
+            raise ValueError("Captured frame could not be decoded.")
+        height, width = frame.shape[:2]
+        return {
+            "status": "connected",
+            "width": int(width),
+            "height": int(height),
+            "message": "Stream connected successfully.",
+        }
+    except Exception:
+        return {
+            "status": "failed",
+            "message": (
+                "Unable to read a frame from the RTSP stream. Make sure the stream "
+                "is live and reachable from the backend (for a phone, push to the "
+                "relay rather than exposing the phone's LAN address)."
+            ),
+        }
+    finally:
+        shutil.rmtree(scratch_dir, ignore_errors=True)
 
 
 @router.get("/{camera_id}")
