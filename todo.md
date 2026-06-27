@@ -112,11 +112,11 @@
 - [x] SummaryCard component
 
 ## Phase 11: Integration & Testing
-- [ ] Test full upload → analyze → events → alerts flow
-- [ ] Test analytics calculation with sample data
-- [ ] Test Claude summary generation with real event data
-- [ ] Test video frame extraction with sample video
-- [ ] Manual UI testing across all pages
+- [x] Test full upload → analyze → events → alerts flow
+- [x] Test analytics calculation with sample data
+- [x] Test Claude summary generation with real event data
+- [x] Test video frame extraction with sample video
+- [x] Manual UI testing across all pages
 
 ## Phase 12: Demo Preparation
 - [ ] Seed database with sample safety events for demo
