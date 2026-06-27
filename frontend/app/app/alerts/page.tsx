@@ -156,7 +156,7 @@ export default function AlertsPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-900 focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Statuses</option>
                 <option value="draft">Draft</option>
@@ -173,7 +173,7 @@ export default function AlertsPage() {
               <select
                 value={alertTypeFilter}
                 onChange={(e) => setAlertTypeFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-900 focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Types</option>
                 <option value="supervisor_review">Supervisor Review</option>

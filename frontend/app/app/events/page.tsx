@@ -117,7 +117,7 @@ export default function EventsPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All Statuses</option>
               <option value="open">Open</option>
@@ -134,7 +134,7 @@ export default function EventsPage() {
             <select
               value={severityFilter}
               onChange={(e) => setSeverityFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All Severities</option>
               <option value="high">High</option>
@@ -150,7 +150,7 @@ export default function EventsPage() {
             <select
               value={eventTypeFilter}
               onChange={(e) => setEventTypeFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All Types</option>
               <option value="ppe_violation">PPE Violation</option>

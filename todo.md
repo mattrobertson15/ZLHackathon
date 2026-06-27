@@ -87,13 +87,17 @@
 - [x] Create TypeScript types (lib/types.ts) from API specs
 
 ## Phase 9: Frontend - Alerts & Summaries
-- [ ] Create alerts page (`/alerts`)
-  - Alert list with status filters
-  - Mock "send" workflow
-- [ ] Create summaries page (`/summaries`)
-  - Daily/weekly/monthly summary generator
-  - Display generated summaries
-  - Show recommended actions
+- [x] Create alerts page (`/alerts`)
+  - Filter sidebar (status, alert type)
+  - Quick stats cards (draft/queued/sent/total)
+  - Timeline-style alert list
+  - Alert detail modal
+  - Status update workflow
+- [x] Create summaries page (`/summaries`)
+  - Summary generator form (period + date range)
+  - Quick-select shortcuts (This Week/Month/Today)
+  - Generated summary display with 4 sections
+  - Summary list with click-to-view modal
 
 ## Phase 10: Frontend - UI Components
 - [ ] UploadDropzone component
