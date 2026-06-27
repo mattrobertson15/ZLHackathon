@@ -31,6 +31,7 @@ export default function EventTable({
     status: EventStatus;
   } | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
+  const [sentEventId, setSentEventId] = useState<string | null>(null);
 
   const getSeverityColor = (severity: Severity) => {
     switch (severity) {
@@ -160,6 +161,16 @@ export default function EventTable({
                   {action.label}
                 </button>
               ))}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSentEventId(event.id);
+                  setTimeout(() => setSentEventId(null), 2000);
+                }}
+                className="ml-auto px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              >
+                {sentEventId === event.id ? "Sent ✓" : "Send"}
+              </button>
             </div>
           )}
 

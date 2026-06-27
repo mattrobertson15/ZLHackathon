@@ -15,7 +15,7 @@ import {
 } from "./types";
 import type { DemoScenarioResponse } from "./types";
 
-const API_BASE_URL =
+export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   (process.env.NODE_ENV === "production" ? "/_/backend" : "http://localhost:8000");
 

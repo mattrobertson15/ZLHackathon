@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { listEvents, updateEvent } from "@/lib/api";
+import { listEvents, updateEvent, resolveMediaUrl } from "@/lib/api";
 import { SafetyEvent, EventStatus, Severity } from "@/lib/types";
 import EventTable from "@/components/EventTable";
 
@@ -17,6 +17,7 @@ export default function EventsPage() {
   const [detailNote, setDetailNote] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkWorking, setBulkWorking] = useState(false);
+  const [sentEventId, setSentEventId] = useState<string | null>(null);
 
   const fetchEvents = async (
     status?: string,
@@ -256,6 +257,20 @@ export default function EventsPage() {
                 </h2>
 
                 <div className="space-y-4">
+                  {selectedEvent.upload?.fileUrl && (
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Screenshot</p>
+                      <img
+                        src={resolveMediaUrl(selectedEvent.upload.fileUrl)}
+                        alt="Event screenshot"
+                        className="w-full rounded-lg border border-gray-200 object-cover"
+                      />
+                      {selectedEvent.upload.locationLabel && (
+                        <p className="text-xs text-gray-500 mt-1">{selectedEvent.upload.locationLabel}</p>
+                      )}
+                    </div>
+                  )}
+
                   <div>
                     <p className="text-sm text-gray-600">Event Type</p>
                     <p className="font-medium text-gray-900 capitalize">
@@ -347,21 +362,49 @@ export default function EventsPage() {
                         )
                           .filter((s) => s !== selectedEvent.status)
                           .map((status) => (
-                            <button
-                              key={status}
-                              onClick={() => {
-                                handleStatusUpdate(
-                                  selectedEvent.id,
-                                  status,
-                                  detailNote.trim() || undefined
-                                );
-                                setDetailNote("");
-                              }}
-                              disabled={updatingEventId === selectedEvent.id}
-                              className="w-full px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 capitalize transition-colors"
-                            >
-                              Mark as {status}
-                            </button>
+                            status === "resolved" ? (
+                              <div key={status} className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    handleStatusUpdate(
+                                      selectedEvent.id,
+                                      status,
+                                      detailNote.trim() || undefined
+                                    );
+                                    setDetailNote("");
+                                  }}
+                                  disabled={updatingEventId === selectedEvent.id}
+                                  className="flex-1 px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 capitalize transition-colors"
+                                >
+                                  Mark as resolved
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setSentEventId(selectedEvent.id);
+                                    setTimeout(() => setSentEventId(null), 2000);
+                                  }}
+                                  className="px-3 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors whitespace-nowrap"
+                                >
+                                  {sentEventId === selectedEvent.id ? "Sent ✓" : "Send"}
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                key={status}
+                                onClick={() => {
+                                  handleStatusUpdate(
+                                    selectedEvent.id,
+                                    status,
+                                    detailNote.trim() || undefined
+                                  );
+                                  setDetailNote("");
+                                }}
+                                disabled={updatingEventId === selectedEvent.id}
+                                className="w-full px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 capitalize transition-colors"
+                              >
+                                Mark as {status}
+                              </button>
+                            )
                           ))}
                       </div>
                     </div>

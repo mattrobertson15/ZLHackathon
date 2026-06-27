@@ -114,6 +114,7 @@ export type EventStatus = "open" | "reviewed" | "dismissed" | "resolved";
 export interface SafetyEvent {
   id: string;
   uploadId: string;
+  upload?: Upload;
   eventType: EventType;
   violationType?: ViolationType;
   severity: Severity;

@@ -1,9 +1,12 @@
+import http.cookiejar
 import os
 import shutil
 import tempfile
+import threading
+import urllib.request
 
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -278,6 +281,78 @@ def capture_now(camera_id: str, db: Session = Depends(get_db)):
         "detections": len(result["detections"]),
         "events": [serialize_event(e) for e in result["events"]],
     }
+
+
+_MEDIAMTX_HLS_BASE = os.environ.get("MEDIAMTX_HLS_URL", "http://mediamtx:8888")
+
+# Per-camera cookie jars — mediamtx issues an hlsSession cookie after the
+# cookieCheck handshake; we need to reuse it across manifest + segment requests.
+_hls_jars: dict[str, http.cookiejar.CookieJar] = {}
+_hls_jars_lock = threading.Lock()
+
+
+def _hls_fetch(camera_id: str, url: str) -> tuple[bytes, str]:
+    """Fetch an HLS resource from mediamtx, bootstrapping the session if needed.
+
+    mediamtx requires a two-step cookie handshake before serving HLS:
+      1. Client hits ?cookieCheck=1 with Cookie: cookieCheck=1
+         → mediamtx returns content + Set-Cookie: hlsSession=<uuid>
+      2. All subsequent requests (sub-manifests, segments) send Cookie: hlsSession=<uuid>
+
+    We pre-seed cookieCheck into the jar so the HTTPCookieProcessor sends it,
+    then reuse the jar (which now holds hlsSession) for every later request.
+    """
+    with _hls_jars_lock:
+        jar = _hls_jars.get(camera_id)
+        if jar is None:
+            jar = http.cookiejar.CookieJar()
+            _hls_jars[camera_id] = jar
+
+    has_session = any(c.name == "hlsSession" for c in jar)
+
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+    if not has_session:
+        # Bootstrap: hit the cookieCheck URL with the required cookie header.
+        # urllib doesn't let us pre-seed jar cookies easily, so we send the
+        # header manually on this one call; the opener stores the hlsSession
+        # Set-Cookie that mediamtx returns.
+        parsed = url.split("?")[0]
+        base = parsed.rsplit("/", 1)[0]
+        bootstrap_url = f"{base}/index.m3u8?cookieCheck=1"
+        req = urllib.request.Request(bootstrap_url, headers={"Cookie": "cookieCheck=1"})
+        with opener.open(req, timeout=10) as resp:
+            resp.read()  # consume; we only care about the Set-Cookie
+
+    with opener.open(url, timeout=10) as resp:
+        body = resp.read()
+        content_type = resp.headers.get("Content-Type", "application/octet-stream")
+
+    return body, content_type
+
+
+@router.get("/{camera_id}/hls/{hls_path:path}")
+def camera_hls_proxy(camera_id: str, hls_path: str, request: Request, db: Session = Depends(get_db)):
+    """Proxy mediamtx HLS through the backend to avoid cross-origin cookie issues."""
+    camera = _get_or_404(db, camera_id)
+    if not camera.rtsp_url:
+        raise HTTPException(status_code=404, detail=_error("NO_HLS", "No RTSP feed."))
+    try:
+        rtsp_path = camera.rtsp_url.split(":8554/", 1)[-1].strip("/")
+    except Exception:
+        raise HTTPException(status_code=404, detail=_error("NO_HLS", "Bad RTSP URL."))
+
+    qs = str(request.query_params)
+    target = f"{_MEDIAMTX_HLS_BASE}/{rtsp_path}/{hls_path}"
+    if qs:
+        target += f"?{qs}"
+
+    try:
+        body, content_type = _hls_fetch(camera_id, target)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=_error("HLS_PROXY_ERROR", str(exc)))
+
+    return Response(content=body, media_type=content_type)
 
 
 @router.get("/{camera_id}/snapshot")

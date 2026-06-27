@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Hls from "hls.js";
 import {
+  API_BASE_URL,
   listCameras,
   listZones,
   createCamera,
@@ -42,6 +44,51 @@ function StreamBadge({ status }: { status: CameraStreamStatus }) {
   );
 }
 
+function hlsProxyUrl(cameraId: string): string {
+  return `${API_BASE_URL}/cameras/${cameraId}/hls/index.m3u8`;
+}
+
+function HlsPlayer({ hlsUrl, onError }: { hlsUrl: string; onError: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = hlsUrl;
+      return;
+    }
+
+    if (!Hls.isSupported()) {
+      onErrorRef.current();
+      return;
+    }
+
+    const hls = new Hls({ lowLatencyMode: true });
+    hls.loadSource(hlsUrl);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.ERROR, (_e, data) => {
+      if (data.fatal) onErrorRef.current();
+    });
+
+    return () => hls.destroy();
+  }, [hlsUrl]);
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      muted
+      playsInline
+      className="h-full w-full object-cover"
+      onError={() => onErrorRef.current()}
+    />
+  );
+}
+
 function CameraCard({
   camera,
   zoneName,
@@ -57,14 +104,19 @@ function CameraCard({
   const [videoFailed, setVideoFailed] = useState(false);
   const [snapshotFailed, setSnapshotFailed] = useState(false);
 
-  // Reset the snapshot error flag whenever a new capture lands so the img retries.
   const prevCaptureAt = useRef(camera.lastCaptureAt);
+  const prevRtspUrl = useRef(camera.rtspUrl);
   useEffect(() => {
     if (camera.lastCaptureAt !== prevCaptureAt.current) {
       prevCaptureAt.current = camera.lastCaptureAt;
       setSnapshotFailed(false);
     }
-  }, [camera.lastCaptureAt]);
+    // Reset video failure if the stream URL changes (e.g. camera re-registered).
+    if (camera.rtspUrl !== prevRtspUrl.current) {
+      prevRtspUrl.current = camera.rtspUrl;
+      setVideoFailed(false);
+    }
+  }, [camera.lastCaptureAt, camera.rtspUrl]);
 
   const run = async (fn: () => Promise<unknown>) => {
     try {
@@ -78,11 +130,21 @@ function CameraCard({
 
   const isFeed = Boolean(camera.rtspUrl);
   const hasSnapshot = camera.lastCaptureAt && !snapshotFailed;
+  // Use HLS proxy only for RTMP-ingested streams (path starts with "live/").
+  // Emulator cameras stay on the looping MP4.
+  const rtspPath = camera.rtspUrl
+    ? camera.rtspUrl.split(":8554/").pop()?.replace(/^\//, "") ?? null
+    : null;
+  const hlsUrl = rtspPath?.startsWith("live/")
+    ? hlsProxyUrl(camera.id)
+    : null;
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden flex flex-col">
       <div className="relative aspect-video bg-gray-900 flex items-center justify-center">
-        {isFeed && !videoFailed ? (
+        {isFeed && hlsUrl && !videoFailed ? (
+          <HlsPlayer hlsUrl={hlsUrl} onError={() => setVideoFailed(true)} />
+        ) : isFeed && !hlsUrl && !videoFailed ? (
           <video
             key={camera.id}
             src={cameraVideoUrl(camera.id)}
