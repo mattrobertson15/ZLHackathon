@@ -14,6 +14,7 @@ export interface Detection {
   label: string;
   confidence: number;
   boundingBox: BoundingBox;
+  frameUrl: string | null;
   source: string;
   createdAt: string;
 }
@@ -92,12 +93,13 @@ export type EventStatus = "open" | "reviewed" | "dismissed" | "resolved";
 export interface SafetyEvent {
   id: string;
   uploadId: string;
-  upload?: Upload | null;
   eventType: EventType;
   violationType?: ViolationType;
   severity: Severity;
   confidence: number;
   status: EventStatus;
+  statusUpdatedAt?: string | null;
+  reviewNote?: string | null;
   suggestedAction: string;
   createdAt: string;
 }
@@ -147,7 +149,20 @@ export interface AnalyticsOverview {
     no_helmet: number;
     no_vest: number;
   };
+  statusBreakdown: {
+    open: number;
+    reviewed: number;
+    dismissed: number;
+    resolved: number;
+  };
   repeatedViolations: RepeatedViolation[];
+}
+
+export interface UploadResults {
+  upload: Upload;
+  detections: Detection[];
+  events: SafetyEvent[];
+  alerts: AlertRecord[];
 }
 
 export interface TrendPoint {

@@ -11,8 +11,6 @@ else:
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
-QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "").rstrip("/")
-QWEN_MODEL = os.getenv("QWEN_MODEL", "Qwen/Qwen3-VL-30B-A3B-Instruct-FP8")
 ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY", "")
 IS_VERCEL = os.getenv("VERCEL") == "1"
 UPLOAD_STORAGE_PATH = os.getenv(

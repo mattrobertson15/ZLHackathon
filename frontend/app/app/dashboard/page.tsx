@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import { getAnalyticsOverview, getAnalyticsTrends, resetIncidents } from "@/lib/api";
 import { AnalyticsOverview, AnalyticsTrends } from "@/lib/types";
-import { buildDashboardReport, downloadMarkdownReport } from "@/lib/report";
 import ComplianceScoreCard from "@/components/ComplianceScoreCard";
 import StatCard from "@/components/StatCard";
 import ViolationBreakdownCard from "@/components/ViolationBreakdownCard";
 import SeverityBreakdownCard from "@/components/SeverityBreakdownCard";
 import RepeatedViolationsCard from "@/components/RepeatedViolationsCard";
+import ReviewStatusCard from "@/components/ReviewStatusCard";
 import TrendTable from "@/components/TrendTable";
 
 export default function Dashboard() {
@@ -58,15 +58,6 @@ export default function Dashboard() {
     }
   }
 
-  function handleDownloadReport() {
-    if (!overview) {
-      return;
-    }
-
-    const report = buildDashboardReport(overview, trends);
-    downloadMarkdownReport(report.markdown, report.fileName);
-  }
-
   if (loading) {
     return (
       <div className="min-h-[calc(100vh-73px)] p-8 flex items-center justify-center">
@@ -91,24 +82,15 @@ export default function Dashboard() {
     <>
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-8">
+          <div className="flex justify-between items-center mb-8">
             <h2 className="text-3xl font-bold text-gray-900">Dashboard</h2>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <button
-                onClick={handleDownloadReport}
-                disabled={!overview}
-                className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-              >
-                Download Report
-              </button>
-              <button
-                onClick={handleReset}
-                disabled={resetting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-              >
-                {resetting ? "Resetting..." : "Reset Incidents"}
-              </button>
-            </div>
+            <button
+              onClick={handleReset}
+              disabled={resetting}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              {resetting ? "Resetting..." : "Reset Incidents"}
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -118,7 +100,7 @@ export default function Dashboard() {
             <StatCard label="Pending Reviews" value={overview?.openEvents || 0} color="yellow" />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <ViolationBreakdownCard
               title="Violation Breakdown"
               items={[
@@ -132,6 +114,11 @@ export default function Dashboard() {
                 { label: "Medium", value: overview?.severityBreakdown.medium || 0, color: "yellow" },
                 { label: "Low", value: overview?.severityBreakdown.low || 0, color: "green" },
               ]}
+            />
+            <ReviewStatusCard
+              statusBreakdown={
+                overview?.statusBreakdown || { open: 0, reviewed: 0, dismissed: 0, resolved: 0 }
+              }
             />
           </div>
 

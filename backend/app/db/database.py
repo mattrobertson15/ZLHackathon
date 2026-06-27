@@ -22,29 +22,27 @@ def init_db():
     )
 
     Base.metadata.create_all(bind=engine)
-    _ensure_upload_columns()
+    _apply_migrations()
 
 
-def _ensure_upload_columns():
-    """Additively add zone_id/camera_id to a pre-existing uploads table.
+def _apply_migrations():
+    """Add columns that may be missing from databases created before these fields existed."""
+    from sqlalchemy import text
 
-    create_all() creates new tables but never alters existing ones, so an older
-    SQLite database would be missing the new nullable upload columns. These
-    ALTERs are idempotent guards for that case; a fresh database already has them.
-    """
-    if not DATABASE_URL.startswith("sqlite"):
-        return
-    from sqlalchemy import inspect, text
-
-    inspector = inspect(engine)
-    if "uploads" not in inspector.get_table_names():
-        return
-    existing = {col["name"] for col in inspector.get_columns("uploads")}
-    with engine.begin() as conn:
-        if "zone_id" not in existing:
-            conn.execute(text("ALTER TABLE uploads ADD COLUMN zone_id VARCHAR"))
-        if "camera_id" not in existing:
-            conn.execute(text("ALTER TABLE uploads ADD COLUMN camera_id VARCHAR"))
+    new_columns = [
+        "ALTER TABLE uploads ADD COLUMN zone_id VARCHAR",
+        "ALTER TABLE uploads ADD COLUMN camera_id VARCHAR",
+        "ALTER TABLE detection_results ADD COLUMN frame_url TEXT",
+        "ALTER TABLE safety_events ADD COLUMN status_updated_at DATETIME",
+        "ALTER TABLE safety_events ADD COLUMN review_note TEXT",
+    ]
+    with engine.connect() as conn:
+        for stmt in new_columns:
+            try:
+                conn.execute(text(stmt))
+                conn.commit()
+            except Exception:
+                pass  # Column already exists
 
 
 def get_db():

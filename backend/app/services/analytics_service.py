@@ -50,6 +50,11 @@ def get_overview(db: Session, period: str = "all") -> dict:
         if event.violation_type:
             violation_breakdown[event.violation_type] += 1
 
+    status_breakdown = {"open": 0, "reviewed": 0, "dismissed": 0, "resolved": 0}
+    for event in events:
+        if event.status in status_breakdown:
+            status_breakdown[event.status] += 1
+
     return {
         "period": period,
         "compliancePercentage": _compliance_percentage(positive_observations, total_observations),
@@ -59,8 +64,7 @@ def get_overview(db: Session, period: str = "all") -> dict:
         "openEvents": open_events,
         "severityBreakdown": dict(severity_breakdown),
         "violationBreakdown": dict(violation_breakdown),
-        # Repeated-zone insights are always computed on the weekly window,
-        # independent of the overview period. See ZONE_CAMERA_PLAN.md#4.
+        "statusBreakdown": status_breakdown,
         "repeatedViolations": compute_repeated_violations(db),
     }
 

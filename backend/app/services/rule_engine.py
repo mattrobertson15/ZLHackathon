@@ -57,17 +57,12 @@ def evaluate(
 
     events: list[SafetyEvent] = []
     for frame_detections in frames.values():
-        ppe_detections = [d for d in frame_detections if d.label in _PPE_RULES]
         person = next((d for d in frame_detections if d.label == "person"), None)
+        if person is None:
+            continue
 
-        if ppe_detections:
-            # PPE labels imply a person is present; create events directly.
-            for detection in ppe_detections:
-                event = _evaluate_detection(upload_id, detection, zone)
-                if event is not None:
-                    events.append(event)
-        elif person is not None:
-            # Person visible but no PPE status could be determined.
+        ppe_detections = [d for d in frame_detections if d.label in _PPE_RULES]
+        if not ppe_detections:
             events.append(
                 _build_event(
                     upload_id,
@@ -78,6 +73,12 @@ def evaluate(
                     "PPE status unclear. Manual review recommended.",
                 )
             )
+            continue
+
+        for detection in ppe_detections:
+            event = _evaluate_detection(upload_id, detection, zone)
+            if event is not None:
+                events.append(event)
 
     return events
 

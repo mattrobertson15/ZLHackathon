@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -130,14 +130,38 @@ def get_safety_event(db: Session, event_id: str) -> Optional[SafetyEvent]:
     return db.query(SafetyEvent).filter(SafetyEvent.id == event_id).first()
 
 
-def update_safety_event_status(db: Session, event_id: str, status: str) -> Optional[SafetyEvent]:
+def update_safety_event_status(
+    db: Session, event_id: str, status: str, note: Optional[str] = None
+) -> Optional[SafetyEvent]:
     event = get_safety_event(db, event_id)
     if event is None:
         return None
     event.status = status
+    event.status_updated_at = datetime.now(timezone.utc)
+    if note is not None:
+        event.review_note = note
     db.commit()
     db.refresh(event)
     return event
+
+
+def list_safety_events_for_upload(db: Session, upload_id: str) -> list[SafetyEvent]:
+    return (
+        db.query(SafetyEvent)
+        .filter(SafetyEvent.upload_id == upload_id)
+        .order_by(SafetyEvent.created_at.asc())
+        .all()
+    )
+
+
+def list_alerts_for_upload(db: Session, upload_id: str) -> list[AlertRecord]:
+    return (
+        db.query(AlertRecord)
+        .join(SafetyEvent, AlertRecord.safety_event_id == SafetyEvent.id)
+        .filter(SafetyEvent.upload_id == upload_id)
+        .order_by(AlertRecord.created_at.asc())
+        .all()
+    )
 
 
 def create_alerts(db: Session, alerts: list[AlertRecord]) -> list[AlertRecord]:

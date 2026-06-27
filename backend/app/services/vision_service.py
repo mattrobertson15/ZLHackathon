@@ -10,7 +10,7 @@ import random
 import requests
 from typing import Literal, Optional, TypedDict
 
-from app.config import QWEN_API_KEY, QWEN_BASE_URL, QWEN_MODEL, ROBOFLOW_API_KEY
+from app.config import QWEN_API_KEY, ROBOFLOW_API_KEY
 
 PPE_LABELS = ["person", "helmet", "no_helmet", "vest", "no_vest"]
 ModelProvider = Literal["auto", "roboflow", "qwen_vision", "manual_mock"]
@@ -51,7 +51,7 @@ def run_inference(
         except Exception as e:
             print(f"Warning: Roboflow inference failed: {e}")
 
-    if QWEN_API_KEY and QWEN_BASE_URL:
+    if QWEN_API_KEY:
         try:
             return _call_qwen_vision(frames), "qwen_vision"
         except Exception as e:
@@ -151,7 +151,7 @@ def compare_detection_sets(
 
 def _run_provider_for_comparison(frames: list[dict], provider: ModelProvider) -> dict:
     configured = (provider == "roboflow" and bool(ROBOFLOW_API_KEY)) or (
-        provider == "qwen_vision" and bool(QWEN_API_KEY) and bool(QWEN_BASE_URL)
+        provider == "qwen_vision" and bool(QWEN_API_KEY)
     )
     source_name = provider
     if not configured:
@@ -234,24 +234,21 @@ def _call_qwen_vision(frames: list[dict]) -> list[RawDetection]:
 
 
 def _analyze_frame_with_qwen(image_path: str, frame_timestamp: Optional[float]) -> list[RawDetection]:
-    """Analyze a single frame via a Nebius-hosted Qwen-VL model (OpenAI-compatible API)."""
+    """Analyze a single frame with Qwen3-VL30B API (Dashscope)."""
     with open(image_path, "rb") as f:
         image_data = base64.standard_b64encode(f.read()).decode("utf-8")
 
-    if not QWEN_BASE_URL:
-        raise ValueError("QWEN_BASE_URL not set in environment")
-
-    url = f"{QWEN_BASE_URL}/chat/completions"
+    url = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-image-understanding/image-understanding"
 
     payload = {
-        "model": QWEN_MODEL,
+        "model": "qwen-vl-plus",
         "messages": [
             {
                 "role": "user",
                 "content": [
                     {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{image_data}"},
+                        "type": "image",
+                        "image": f"data:image/jpeg;base64,{image_data}",
                     },
                     {
                         "type": "text",
@@ -305,7 +302,7 @@ def _parse_qwen_response(response: dict, frame_timestamp: Optional[float]) -> li
     detections: list[RawDetection] = []
 
     try:
-        content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
+        content = response.get("output", {}).get("choices", [{}])[0].get("message", {}).get("content", "")
 
         # Try to extract JSON from response
         import json

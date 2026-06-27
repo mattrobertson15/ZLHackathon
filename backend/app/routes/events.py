@@ -63,6 +63,8 @@ def _serialize_event(
         "severity": event.severity,
         "confidence": event.confidence,
         "status": event.status,
+        "statusUpdatedAt": to_iso(event.status_updated_at) if event.status_updated_at else None,
+        "reviewNote": event.review_note,
         "suggestedAction": event.suggested_action,
         "createdAt": to_iso(event.created_at),
     }
@@ -123,6 +125,7 @@ def get_event(event_id: str, db: Session = Depends(get_db)):
 
 class UpdateEventRequest(BaseModel):
     status: str
+    note: Optional[str] = None
 
 
 @router.patch("/{event_id}")
@@ -135,7 +138,7 @@ def patch_event(event_id: str, request: UpdateEventRequest, db: Session = Depend
                 f"Status must be one of {sorted(VALID_STATUSES)}.",
             ),
         )
-    event = update_safety_event_status(db, event_id, request.status)
+    event = update_safety_event_status(db, event_id, request.status, request.note)
     if event is None:
         raise HTTPException(
             status_code=404,

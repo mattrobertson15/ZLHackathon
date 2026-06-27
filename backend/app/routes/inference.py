@@ -16,7 +16,6 @@ from app.db.repositories import (
     update_upload_status,
 )
 from app.models.alert_record import AlertRecord
-from app.models.detection_result import DetectionResult
 from app.models.safety_event import SafetyEvent
 from app.services import (
     alert_service,
@@ -26,7 +25,7 @@ from app.services import (
     vision_service,
 )
 from app.services.detection_parser import normalize_detections
-from app.utils.timestamps import to_iso
+from app.services.serializers import serialize_alert, serialize_detection, serialize_event
 from app.utils.video_frames import extract_frames
 
 router = APIRouter(tags=["inference"])
@@ -40,53 +39,6 @@ class AnalyzeRequest(BaseModel):
     modelProvider: str = "auto"
     createEvents: bool = True
     createAlerts: bool = True
-
-
-def _serialize_detection(detection: DetectionResult) -> dict:
-    bounding_box = None
-    if detection.bbox_x is not None:
-        bounding_box = {
-            "x": detection.bbox_x,
-            "y": detection.bbox_y,
-            "width": detection.bbox_width,
-            "height": detection.bbox_height,
-        }
-    return {
-        "id": detection.id,
-        "uploadId": detection.upload_id,
-        "frameTimestamp": detection.frame_timestamp,
-        "label": detection.label,
-        "confidence": detection.confidence,
-        "boundingBox": bounding_box,
-        "source": detection.source,
-        "createdAt": to_iso(detection.created_at),
-    }
-
-
-def _serialize_event(event: SafetyEvent) -> dict:
-    return {
-        "id": event.id,
-        "uploadId": event.upload_id,
-        "eventType": event.event_type,
-        "violationType": event.violation_type,
-        "severity": event.severity,
-        "confidence": event.confidence,
-        "status": event.status,
-        "suggestedAction": event.suggested_action,
-        "createdAt": to_iso(event.created_at),
-    }
-
-
-def _serialize_alert(alert: AlertRecord) -> dict:
-    return {
-        "id": alert.id,
-        "safetyEventId": alert.safety_event_id,
-        "alertType": alert.alert_type,
-        "title": alert.title,
-        "message": alert.message,
-        "status": alert.status,
-        "createdAt": to_iso(alert.created_at),
-    }
 
 
 def _serialize_raw_detection(upload_id: str, source: str, detection: dict) -> dict:
@@ -126,16 +78,7 @@ def _serialize_comparison(upload_id: str, comparison: dict) -> dict:
     }
 
 
-def _resolve_disk_path(upload_id: str, file_url: str) -> str:
-    if file_url.startswith("http://") or file_url.startswith("https://"):
-        # Blob-backed upload: pull it down to local scratch space for this
-        # request since vision/frame-extraction libraries need a file path.
-        ext = os.path.splitext(file_url.split("?")[0])[1]
-        local_path = os.path.join(UPLOAD_STORAGE_PATH, f"{upload_id}{ext}")
-        with open(local_path, "wb") as out_file:
-            out_file.write(blob_service.download_blob(file_url))
-        return local_path
-
+def _resolve_disk_path(file_url: str) -> str:
     stored_name = file_url.removeprefix("/media/")
     return os.path.join(UPLOAD_STORAGE_PATH, stored_name)
 
@@ -162,15 +105,20 @@ def analyze_upload(upload_id: str, request: AnalyzeRequest, db: Session = Depend
     update_upload_status(db, upload_id, "processing")
 
     try:
-        disk_path = _resolve_disk_path(upload_id, upload.file_url)
+        disk_path = _resolve_disk_path(upload.file_url)
         if upload.file_type == "image":
             frames = [{"path": disk_path, "frameTimestamp": None}]
+            frame_url_by_timestamp = {None: upload.file_url}
         else:
             frame_dir = os.path.join(UPLOAD_STORAGE_PATH, f"{upload_id}_frames")
             frames = [
                 {"path": f["framePath"], "frameTimestamp": f["frameTimestamp"]}
                 for f in extract_frames(disk_path, frame_dir)
             ]
+            frame_url_by_timestamp = {
+                f["frameTimestamp"]: f"/media/{upload_id}_frames/{os.path.basename(f['path'])}"
+                for f in frames
+            }
 
         comparison = None
         if request.modelProvider == "compare":
@@ -185,6 +133,9 @@ def analyze_upload(upload_id: str, request: AnalyzeRequest, db: Session = Depend
             )
         else:
             raw_detections, source = vision_service.run_inference(frames, request.modelProvider)
+
+        for raw in raw_detections:
+            raw["frameUrl"] = frame_url_by_timestamp.get(raw.get("frameTimestamp"))
 
         detections = normalize_detections(raw_detections, upload_id, source)
         detections = create_detection_results(db, detections)
@@ -218,9 +169,9 @@ def analyze_upload(upload_id: str, request: AnalyzeRequest, db: Session = Depend
         "status": "processed",
         "modelProvider": request.modelProvider,
         "primarySource": source,
-        "detections": [_serialize_detection(d) for d in detections],
-        "events": [_serialize_event(e) for e in events],
-        "alerts": [_serialize_alert(a) for a in alerts],
+        "detections": [serialize_detection(d) for d in detections],
+        "events": [serialize_event(e) for e in events],
+        "alerts": [serialize_alert(a) for a in alerts],
     }
     if comparison is not None:
         response["comparison"] = comparison
@@ -236,4 +187,4 @@ def get_detections(upload_id: str, db: Session = Depends(get_db)):
             detail=_error("UPLOAD_NOT_FOUND", f"No upload found for id '{upload_id}'."),
         )
     detections = list_detection_results_for_upload(db, upload_id)
-    return {"uploadId": upload_id, "detections": [_serialize_detection(d) for d in detections]}
+    return {"uploadId": upload_id, "detections": [serialize_detection(d) for d in detections]}
