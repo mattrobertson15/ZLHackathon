@@ -25,7 +25,7 @@ app = FastAPI(title="Safety Sentinel API")
 _cors_origins = [
     "http://localhost:3000",
     "http://localhost:8000",
-    "https://safety-sentinel-api.fly.dev",
+    "https://zl-hackathon-z7g6.vercel.app",
 ]
 if os.getenv("FRONTEND_URL"):
     _cors_origins.append(os.getenv("FRONTEND_URL"))
