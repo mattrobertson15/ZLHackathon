@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getAnalyticsOverview, getAnalyticsTrends } from "@/lib/api";
+import { getAnalyticsOverview, getAnalyticsTrends, resetIncidents } from "@/lib/api";
 import { AnalyticsOverview, AnalyticsTrends } from "@/lib/types";
 import ComplianceScoreCard from "@/components/ComplianceScoreCard";
 import StatCard from "@/components/StatCard";
@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [trends, setTrends] = useState<AnalyticsTrends | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -34,6 +35,27 @@ export default function Dashboard() {
 
     fetchData();
   }, []);
+
+  async function handleReset() {
+    if (!confirm("Are you sure you want to reset all incidents? This cannot be undone.")) {
+      return;
+    }
+
+    setResetting(true);
+    try {
+      await resetIncidents();
+      const [overviewData, trendsData] = await Promise.all([
+        getAnalyticsOverview("weekly"),
+        getAnalyticsTrends("daily"),
+      ]);
+      setOverview(overviewData);
+      setTrends(trendsData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to reset incidents");
+    } finally {
+      setResetting(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -76,7 +98,16 @@ export default function Dashboard() {
 
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h2>
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900">Dashboard</h2>
+            <button
+              onClick={handleReset}
+              disabled={resetting}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              {resetting ? "Resetting..." : "Reset Incidents"}
+            </button>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <ComplianceScoreCard percentage={overview?.compliancePercentage || 0} />

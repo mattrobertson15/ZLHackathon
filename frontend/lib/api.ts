@@ -205,3 +205,10 @@ export async function getSummary(summaryId: string): Promise<SafetySummary> {
   );
   return data.summary;
 }
+
+// Admin API
+export async function resetIncidents(): Promise<{ status: string; message: string }> {
+  return apiCall<{ status: string; message: string }>("/admin/reset", {
+    method: "POST",
+  });
+}
