@@ -85,6 +85,15 @@ def list_safety_events(
     return query.all()
 
 
+def list_safety_events_for_upload(db: Session, upload_id: str) -> list[SafetyEvent]:
+    return (
+        db.query(SafetyEvent)
+        .filter(SafetyEvent.upload_id == upload_id)
+        .order_by(SafetyEvent.created_at.asc())
+        .all()
+    )
+
+
 def list_safety_events_since(db: Session, since: Optional[datetime] = None) -> list[SafetyEvent]:
     query = db.query(SafetyEvent)
     if since:
@@ -141,6 +150,16 @@ def list_alerts(
     if limit:
         query = query.limit(limit)
     return query.all()
+
+
+def list_alerts_for_upload(db: Session, upload_id: str) -> list[AlertRecord]:
+    return (
+        db.query(AlertRecord)
+        .join(SafetyEvent, AlertRecord.safety_event_id == SafetyEvent.id)
+        .filter(SafetyEvent.upload_id == upload_id)
+        .order_by(AlertRecord.created_at.asc())
+        .all()
+    )
 
 
 def get_alert(db: Session, alert_id: str) -> Optional[AlertRecord]:

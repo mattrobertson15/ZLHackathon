@@ -6,8 +6,16 @@ from sqlalchemy.orm import Session
 
 from app.config import UPLOAD_STORAGE_PATH
 from app.db.database import get_db
-from app.db.repositories import create_upload, get_upload, list_uploads
+from app.db.repositories import (
+    create_upload,
+    get_upload,
+    list_alerts_for_upload,
+    list_detection_results_for_upload,
+    list_safety_events_for_upload,
+    list_uploads,
+)
 from app.models.upload import Upload
+from app.services.serializers import serialize_alert, serialize_detection, serialize_event
 from app.utils.ids import generate_id
 from app.utils.timestamps import now_utc, to_iso
 
@@ -98,3 +106,29 @@ def get_upload_by_id(upload_id: str, db: Session = Depends(get_db)):
             detail=_error("UPLOAD_NOT_FOUND", f"No upload found for id '{upload_id}'."),
         )
     return {"upload": _serialize_upload(upload)}
+
+
+@router.get("/{upload_id}/results")
+def get_upload_results(upload_id: str, db: Session = Depends(get_db)):
+    """Read-only snapshot of the full upload -> detections -> events -> alerts chain.
+
+    Unlike POST /uploads/{upload_id}/analyze, this never runs inference and is
+    safe to call repeatedly (e.g. on page load/refresh).
+    """
+    upload = get_upload(db, upload_id)
+    if upload is None:
+        raise HTTPException(
+            status_code=404,
+            detail=_error("UPLOAD_NOT_FOUND", f"No upload found for id '{upload_id}'."),
+        )
+
+    detections = list_detection_results_for_upload(db, upload_id)
+    events = list_safety_events_for_upload(db, upload_id)
+    alerts = list_alerts_for_upload(db, upload_id)
+
+    return {
+        "upload": _serialize_upload(upload),
+        "detections": [serialize_detection(d) for d in detections],
+        "events": [serialize_event(e) for e in events],
+        "alerts": [serialize_alert(a) for a in alerts],
+    }

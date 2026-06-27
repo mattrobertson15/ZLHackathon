@@ -14,6 +14,7 @@ export interface Detection {
   label: string;
   confidence: number;
   boundingBox: BoundingBox;
+  frameUrl: string | null;
   source: string;
   createdAt: string;
 }
@@ -136,6 +137,13 @@ export interface SafetySummary {
   trendAnalysis: string;
   recommendedActions: string;
   createdAt: string;
+}
+
+export interface UploadResults {
+  upload: Upload;
+  detections: Detection[];
+  events: SafetyEvent[];
+  alerts: AlertRecord[];
 }
 
 export interface AnalyzeResponse {

@@ -15,14 +15,17 @@ from app.db.repositories import (
     update_upload_status,
 )
 from app.models.alert_record import AlertRecord
-from app.models.detection_result import DetectionResult
 from app.models.safety_event import SafetyEvent
 from app.services import alert_service, rule_engine, vision_service
 from app.services.detection_parser import normalize_detections
-from app.utils.timestamps import to_iso
+from app.services.serializers import serialize_alert, serialize_detection, serialize_event
 from app.utils.video_frames import extract_frames
 
 router = APIRouter(tags=["inference"])
+
+_serialize_detection = serialize_detection
+_serialize_event = serialize_event
+_serialize_alert = serialize_alert
 
 
 def _error(code: str, message: str):
@@ -33,53 +36,6 @@ class AnalyzeRequest(BaseModel):
     modelProvider: str = "auto"
     createEvents: bool = True
     createAlerts: bool = True
-
-
-def _serialize_detection(detection: DetectionResult) -> dict:
-    bounding_box = None
-    if detection.bbox_x is not None:
-        bounding_box = {
-            "x": detection.bbox_x,
-            "y": detection.bbox_y,
-            "width": detection.bbox_width,
-            "height": detection.bbox_height,
-        }
-    return {
-        "id": detection.id,
-        "uploadId": detection.upload_id,
-        "frameTimestamp": detection.frame_timestamp,
-        "label": detection.label,
-        "confidence": detection.confidence,
-        "boundingBox": bounding_box,
-        "source": detection.source,
-        "createdAt": to_iso(detection.created_at),
-    }
-
-
-def _serialize_event(event: SafetyEvent) -> dict:
-    return {
-        "id": event.id,
-        "uploadId": event.upload_id,
-        "eventType": event.event_type,
-        "violationType": event.violation_type,
-        "severity": event.severity,
-        "confidence": event.confidence,
-        "status": event.status,
-        "suggestedAction": event.suggested_action,
-        "createdAt": to_iso(event.created_at),
-    }
-
-
-def _serialize_alert(alert: AlertRecord) -> dict:
-    return {
-        "id": alert.id,
-        "safetyEventId": alert.safety_event_id,
-        "alertType": alert.alert_type,
-        "title": alert.title,
-        "message": alert.message,
-        "status": alert.status,
-        "createdAt": to_iso(alert.created_at),
-    }
 
 
 def _serialize_raw_detection(upload_id: str, source: str, detection: dict) -> dict:
@@ -149,12 +105,17 @@ def analyze_upload(upload_id: str, request: AnalyzeRequest, db: Session = Depend
         disk_path = _resolve_disk_path(upload.file_url)
         if upload.file_type == "image":
             frames = [{"path": disk_path, "frameTimestamp": None}]
+            frame_url_by_timestamp = {None: upload.file_url}
         else:
             frame_dir = os.path.join(UPLOAD_STORAGE_PATH, f"{upload_id}_frames")
             frames = [
                 {"path": f["framePath"], "frameTimestamp": f["frameTimestamp"]}
                 for f in extract_frames(disk_path, frame_dir)
             ]
+            frame_url_by_timestamp = {
+                f["frameTimestamp"]: f"/media/{upload_id}_frames/{os.path.basename(f['path'])}"
+                for f in frames
+            }
 
         comparison = None
         if request.modelProvider == "compare":
@@ -169,6 +130,9 @@ def analyze_upload(upload_id: str, request: AnalyzeRequest, db: Session = Depend
             )
         else:
             raw_detections, source = vision_service.run_inference(frames, request.modelProvider)
+
+        for raw in raw_detections:
+            raw["frameUrl"] = frame_url_by_timestamp.get(raw.get("frameTimestamp"))
 
         detections = normalize_detections(raw_detections, upload_id, source)
         detections = create_detection_results(db, detections)

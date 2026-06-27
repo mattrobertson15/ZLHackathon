@@ -73,7 +73,11 @@ Frontend Responsibilities
 
 * Upload images and videos
 * Display processing status
-* Render annotated detection results
+* Render annotated detection results: the results page (`/results/[uploadId]`)
+  fetches the full upload -> detections -> events -> alerts chain in one call
+  to `GET /uploads/{upload_id}/results` and draws bounding boxes directly on
+  the source image (or each sampled video frame) using each detection's
+  `boundingBox` and `frameUrl`
 * Show compliance metrics
 * Display event logs
 * Display mock alerts
@@ -185,9 +189,16 @@ type DetectionResult = {
     width: number;
     height: number;
   };
+  frameUrl?: string;
   source: "qwen_vision" | "roboflow" | "manual_mock";
   createdAt: string;
 };
+
+`frameUrl` points at the image the bounding box should be drawn over: the
+original upload's `fileUrl` for image uploads, or the specific sampled video
+frame (served from `/media/{upload_id}_frames/...`) for video uploads. This
+lets the frontend overlay every detection's box on the correct still image
+without re-deriving frame paths client-side.
 
 5. Rule Engine
 

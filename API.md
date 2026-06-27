@@ -122,6 +122,69 @@ Response
   }
 }
 
+GET /uploads/{upload_id}/results
+
+Read-only snapshot of everything generated from one upload: detections,
+safety events, and alerts. Unlike `POST /uploads/{upload_id}/analyze`, this
+endpoint never runs inference and has no side effects, so it is safe to call
+repeatedly (e.g. on page load or refresh). This is the endpoint the
+`/app/results/[uploadId]` frontend page uses to render the full
+upload -> detections -> events -> alerts story in one fetch.
+
+Response
+
+{
+  "upload": {
+    "id": "upl_123",
+    "fileName": "warehouse-floor.jpg",
+    "fileType": "image",
+    "fileUrl": "/media/warehouse-floor.jpg",
+    "uploadedAt": "2026-06-27T14:30:00Z",
+    "status": "processed"
+  },
+  "detections": [
+    {
+      "id": "det_001",
+      "uploadId": "upl_123",
+      "frameTimestamp": null,
+      "label": "no_helmet",
+      "confidence": 0.88,
+      "boundingBox": { "x": 150, "y": 85, "width": 80, "height": 70 },
+      "frameUrl": "/media/warehouse-floor.jpg",
+      "source": "roboflow",
+      "createdAt": "2026-06-27T14:31:00Z"
+    }
+  ],
+  "events": [
+    {
+      "id": "evt_001",
+      "uploadId": "upl_123",
+      "eventType": "ppe_violation",
+      "violationType": "no_helmet",
+      "severity": "high",
+      "confidence": 0.88,
+      "status": "open",
+      "suggestedAction": "Supervisor review recommended. Helmet appears missing.",
+      "createdAt": "2026-06-27T14:31:02Z"
+    }
+  ],
+  "alerts": [
+    {
+      "id": "alrt_001",
+      "safetyEventId": "evt_001",
+      "alertType": "supervisor_review",
+      "title": "Missing Helmet Detected",
+      "message": "A high-severity PPE violation was detected. Supervisor review is recommended.",
+      "status": "draft",
+      "createdAt": "2026-06-27T14:31:03Z"
+    }
+  ]
+}
+
+Errors
+
+404 UPLOAD_NOT_FOUND if no upload exists for the given id.
+
 Inference
 
 POST /uploads/{upload_id}/analyze
@@ -173,6 +236,7 @@ Response
         "width": 220,
         "height": 520
       },
+      "frameUrl": null,
       "source": "roboflow",
       "createdAt": "2026-06-27T14:31:00Z"
     },
@@ -188,6 +252,7 @@ Response
         "width": 80,
         "height": 70
       },
+      "frameUrl": null,
       "source": "roboflow",
       "createdAt": "2026-06-27T14:31:00Z"
     }
@@ -287,6 +352,7 @@ Response
         "width": 220,
         "height": 520
       },
+      "frameUrl": null,
       "source": "qwen_vision",
       "createdAt": "2026-06-27T14:31:00Z"
     }

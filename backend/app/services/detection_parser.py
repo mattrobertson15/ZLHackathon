@@ -22,6 +22,7 @@ def normalize_detections(raw_detections: list[dict], upload_id: str, source: str
                 bbox_y=bbox.get("y"),
                 bbox_width=bbox.get("width"),
                 bbox_height=bbox.get("height"),
+                frame_url=raw.get("frameUrl"),
                 source=source,
                 created_at=now_utc(),
             )

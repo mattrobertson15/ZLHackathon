@@ -8,6 +8,7 @@ import {
   SafetySummary,
   AnalyzeResponse,
   ModelProvider,
+  UploadResults,
 } from "./types";
 import type { DemoScenarioResponse } from "./types";
 
@@ -77,6 +78,10 @@ export async function getDetections(uploadId: string): Promise<Detection[]> {
     `/uploads/${uploadId}/detections`
   );
   return data.detections;
+}
+
+export async function getUploadResults(uploadId: string): Promise<UploadResults> {
+  return apiCall<UploadResults>(`/uploads/${uploadId}/results`);
 }
 
 // Analysis API

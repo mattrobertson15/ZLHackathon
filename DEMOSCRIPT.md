@@ -90,25 +90,26 @@ The backend also supports a compare mode that runs Roboflow and Qwen side by sid
 
 Step 5: Show Detection Results
 
-Navigate to the results page.
+Navigate to the results page (`/app/results/[uploadId]`).
 
-Show annotated image or frame-level results.
+This is the emotional center of the demo: a raw photo or video becomes operational intelligence in one screen. The page draws bounding boxes directly on the source image (or each sampled video frame), and shows the generated safety events and alerts inline below it — no extra navigation required.
 
 Highlight:
 
-* Person detections
-* Helmet/no-helmet detections
-* Vest/no-vest detections
-* Confidence scores
-* Safety status
+* Bounding boxes overlaid on the image/frame, color-coded: red for violations (no_helmet, no_vest), green for compliant PPE (helmet, vest), blue for person
+* Label and confidence score on each box
+* For video uploads: the video player plus a grid of sampled frame thumbnails, each with its own bounding boxes
+* The pipeline stat cards at the top (Detections / Safety Events / Violations / Alerts Created)
+* The "Safety Events" section showing the structured events generated from this upload's detections
+* The "Alerts Created" section showing any mock alerts routed from those events
 
 Suggested narration:
 
-The model output is normalized into detection results. These detections are then passed through a safety rule engine. For example, if a person is detected without a visible helmet, the system creates a high-severity PPE violation. If a vest is missing, it creates a medium-severity violation.
+The model output is normalized into detection results, drawn here as bounding boxes directly on the image. Those detections are passed through a safety rule engine. For example, if a person is detected without a visible helmet, the system creates a high-severity PPE violation. If a vest is missing, it creates a medium-severity violation. You can see the resulting events and any alerts they triggered right here on the same page — raw pixels in, operational safety data out.
 
 Step 6: Show Generated Safety Events
 
-Scroll or navigate to the event log.
+Optionally, navigate to the full event log for a cross-upload view (the results page already showed this upload's events).
 
 Show structured events.
 
