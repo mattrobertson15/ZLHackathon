@@ -18,6 +18,42 @@ export interface Detection {
   createdAt: string;
 }
 
+export type ModelProvider = "auto" | "roboflow" | "qwen_vision" | "manual_mock" | "compare";
+
+export interface ComparisonDetection {
+  uploadId: string;
+  frameTimestamp: number | null;
+  label: string;
+  confidence: number;
+  boundingBox: BoundingBox | null;
+  source: string;
+}
+
+export interface ModelComparisonProviderResult {
+  provider: Exclude<ModelProvider, "auto" | "manual_mock" | "compare">;
+  source: string;
+  available: boolean;
+  error: string | null;
+  detections: ComparisonDetection[];
+}
+
+export interface ModelComparison {
+  roboflow: ModelComparisonProviderResult;
+  qwen: ModelComparisonProviderResult;
+  agreement: {
+    matchingLabels: string[];
+    roboflowOnly: string[];
+    qwenOnly: string[];
+    conflicts: string[];
+    frames: Array<{
+      frameTimestamp: number | null;
+      matchingLabels: string[];
+      roboflowOnly: string[];
+      qwenOnly: string[];
+    }>;
+  };
+}
+
 export interface Upload {
   id: string;
   fileName: string;
@@ -105,9 +141,12 @@ export interface SafetySummary {
 export interface AnalyzeResponse {
   uploadId: string;
   status: string;
+  modelProvider: ModelProvider;
+  primarySource: string;
   detections: Detection[];
   events: SafetyEvent[];
   alerts: AlertRecord[];
+  comparison?: ModelComparison;
 }
 
 export interface DemoScenarioResponse {

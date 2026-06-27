@@ -7,6 +7,7 @@ import {
   AnalyticsTrends,
   SafetySummary,
   AnalyzeResponse,
+  ModelProvider,
 } from "./types";
 import type { DemoScenarioResponse } from "./types";
 
@@ -82,12 +83,13 @@ export async function getDetections(uploadId: string): Promise<Detection[]> {
 export async function analyzeUpload(
   uploadId: string,
   createEvents = true,
-  createAlerts = true
+  createAlerts = true,
+  modelProvider: ModelProvider = "auto"
 ): Promise<AnalyzeResponse> {
   return apiCall<AnalyzeResponse>(`/uploads/${uploadId}/analyze`, {
     method: "POST",
     body: JSON.stringify({
-      modelProvider: "qwen_vision",
+      modelProvider,
       createEvents,
       createAlerts,
     }),

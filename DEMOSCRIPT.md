@@ -82,7 +82,11 @@ Show loading state if available.
 
 Suggested narration:
 
-The backend sends the image or sampled video frames to a vision model. The model looks for people, helmets, missing helmets, safety vests, and missing vests.
+The backend sends the image or sampled video frames to the vision inference layer. By default, Safety Sentinel uses the Roboflow PPE detector first because it is trained for object detection, then falls back to Qwen Vision or deterministic mock detections if needed. The model looks for people, helmets, missing helmets, safety vests, and missing vests.
+
+Optional technical note:
+
+The backend also supports a compare mode that runs Roboflow and Qwen side by side, then reports where the two models agree or disagree. Operational safety events still come from the primary detector.
 
 Step 5: Show Detection Results
 

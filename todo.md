@@ -19,16 +19,18 @@
 - [x] Implement upload status tracking (uploaded → processing → processed → failed)
 
 ## Phase 3: Vision Inference Integration
-- [x] Create detection parser to normalize Qwen outputs (`app/services/detection_parser.py`)
+- [x] Create detection parser to normalize vision-model outputs (`app/services/detection_parser.py`)
 - [x] Implement inference endpoint (`POST /uploads/{upload_id}/analyze`)
-- [x] Add mock detection fallback (for demo reliability if Qwen fails) — this is the active default until Phase 3.5 lands (`app/services/vision_service.py`)
+- [x] Add mock detection fallback for demo reliability (`app/services/vision_service.py`)
+- [x] Route `modelProvider: "auto"` through Roboflow first, then Qwen, then mock fallback
+- [x] Add `modelProvider: "compare"` to evaluate Roboflow and Qwen side by side
 - [x] Store raw detection results in database (`detection_results` table)
 
-## Phase 3.5: Qwen Vision Client (Deferred — needs QWEN_API_KEY)
+## Phase 3.5: Qwen Vision Client
 - [x] Integrate Qwen3-VL30B API client
   - Detection targets: person, helmet, no_helmet, vest, no_vest
   - Extract: label, confidence, bounding box, frame timestamp (for video)
-- [x] Implement `_call_qwen_vision` in `app/services/vision_service.py` (currently raises `NotImplementedError`)
+- [x] Implement `_call_qwen_vision` in `app/services/vision_service.py`
 - [x] Verify real Qwen output shape matches `RawDetection`/detection-parser expectations; adjust parser if not
 - [x] Confirm mock-fallback-on-failure behavior still works once the real client is live
 

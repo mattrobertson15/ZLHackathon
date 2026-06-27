@@ -1,17 +1,19 @@
 """Vision inference orchestration.
 
-See ARCHITECTURE.md#vision-inference-layer. The Qwen3-VL30B client
-integrates vision inference for PPE detection. Falls back to Roboflow
-if available, then to mock detections if the API call fails, preserving demo reliability.
+See ARCHITECTURE.md#vision-inference-layer. Roboflow is the preferred PPE
+object detector for operational events. Qwen Vision remains available as an
+experimental provider and comparison path, with mock detections preserving demo
+reliability when configured model providers are unavailable.
 """
 import base64
 import random
 import requests
-from typing import Optional, TypedDict
+from typing import Literal, Optional, TypedDict
 
 from app.config import QWEN_API_KEY, ROBOFLOW_API_KEY
 
 PPE_LABELS = ["person", "helmet", "no_helmet", "vest", "no_vest"]
+ModelProvider = Literal["auto", "roboflow", "qwen_vision", "manual_mock"]
 
 
 class RawDetection(TypedDict):
@@ -21,30 +23,195 @@ class RawDetection(TypedDict):
     frameTimestamp: Optional[float]
 
 
-def run_inference(frames: list[dict]) -> tuple[list[RawDetection], str]:
+def run_inference(
+    frames: list[dict],
+    provider: ModelProvider = "auto",
+) -> tuple[list[RawDetection], str]:
     """frames: list of {"path": str, "frameTimestamp": float | None}
 
     Returns (raw_detections, source).
 
-    Inference priority:
-    1. Qwen Vision (if QWEN_API_KEY set)
-    2. Roboflow (if ROBOFLOW_API_KEY set)
+    Auto inference priority:
+    1. Roboflow (if ROBOFLOW_API_KEY set)
+    2. Qwen Vision (if QWEN_API_KEY set)
     3. Mock detections (fallback)
     """
+    if provider == "manual_mock":
+        return _generate_mock_detections(frames), "manual_mock"
+
+    if provider == "roboflow":
+        return _run_roboflow_or_raise(frames), "roboflow"
+
+    if provider == "qwen_vision":
+        return _call_qwen_vision(frames), "qwen_vision"
+
+    if ROBOFLOW_API_KEY:
+        try:
+            return _run_roboflow_or_raise(frames), "roboflow"
+        except Exception as e:
+            print(f"Warning: Roboflow inference failed: {e}")
+
     if QWEN_API_KEY:
         try:
             return _call_qwen_vision(frames), "qwen_vision"
         except Exception as e:
             print(f"Warning: Qwen inference failed: {e}")
 
-    if ROBOFLOW_API_KEY:
-        try:
-            from app.services.roboflow_service import run_roboflow_inference
-            return run_roboflow_inference(frames), "roboflow"
-        except Exception as e:
-            print(f"Warning: Roboflow inference failed: {e}")
-
     return _generate_mock_detections(frames), "manual_mock"
+
+
+def run_inference_with_fallback(
+    frames: list[dict],
+    provider: ModelProvider,
+) -> tuple[list[RawDetection], str]:
+    """Run an explicit provider, falling back to mock for demo reliability."""
+    try:
+        return run_inference(frames, provider)
+    except Exception as e:
+        print(f"Warning: {provider} inference failed, using mock fallback: {e}")
+        return _generate_mock_detections(frames), "manual_mock"
+
+
+def run_comparison(frames: list[dict]) -> dict:
+    """Run Roboflow and Qwen side by side for evaluation reporting.
+
+    Roboflow remains the preferred primary source when available. Qwen results
+    are returned only for comparison and are not persisted as operational truth.
+    """
+    roboflow_result = _run_provider_for_comparison(frames, "roboflow")
+    qwen_result = _run_provider_for_comparison(frames, "qwen_vision")
+
+    primary = roboflow_result
+    if not primary["available"] or primary["error"]:
+        primary_detections, primary_source = run_inference(frames, "auto")
+        primary = {
+            "provider": "auto",
+            "source": primary_source,
+            "available": True,
+            "error": None,
+            "detections": primary_detections,
+        }
+
+    return {
+        "primary": primary,
+        "comparison": {
+            "roboflow": roboflow_result,
+            "qwen": qwen_result,
+            "agreement": compare_detection_sets(
+                roboflow_result["detections"],
+                qwen_result["detections"],
+            ),
+        },
+    }
+
+
+def compare_detection_sets(
+    roboflow_detections: list[RawDetection],
+    qwen_detections: list[RawDetection],
+) -> dict:
+    roboflow_labels = _labels_by_frame(roboflow_detections)
+    qwen_labels = _labels_by_frame(qwen_detections)
+    frame_keys = sorted(set(roboflow_labels) | set(qwen_labels), key=lambda value: str(value))
+
+    frame_reports = []
+    matching_labels = set()
+    roboflow_only = set()
+    qwen_only = set()
+    conflicts = []
+
+    for frame_key in frame_keys:
+        roboflow_frame_labels = roboflow_labels.get(frame_key, set())
+        qwen_frame_labels = qwen_labels.get(frame_key, set())
+        frame_matching = roboflow_frame_labels & qwen_frame_labels
+        frame_roboflow_only = roboflow_frame_labels - qwen_frame_labels
+        frame_qwen_only = qwen_frame_labels - roboflow_frame_labels
+
+        matching_labels.update(frame_matching)
+        roboflow_only.update(frame_roboflow_only)
+        qwen_only.update(frame_qwen_only)
+        conflicts.extend(_status_conflicts(frame_key, roboflow_frame_labels, qwen_frame_labels))
+
+        frame_reports.append(
+            {
+                "frameTimestamp": frame_key,
+                "matchingLabels": sorted(frame_matching),
+                "roboflowOnly": sorted(frame_roboflow_only),
+                "qwenOnly": sorted(frame_qwen_only),
+            }
+        )
+
+    return {
+        "matchingLabels": sorted(matching_labels),
+        "roboflowOnly": sorted(roboflow_only),
+        "qwenOnly": sorted(qwen_only),
+        "conflicts": conflicts,
+        "frames": frame_reports,
+    }
+
+
+def _run_provider_for_comparison(frames: list[dict], provider: ModelProvider) -> dict:
+    configured = (provider == "roboflow" and bool(ROBOFLOW_API_KEY)) or (
+        provider == "qwen_vision" and bool(QWEN_API_KEY)
+    )
+    source_name = provider
+    if not configured:
+        return {
+            "provider": provider,
+            "source": source_name,
+            "available": False,
+            "error": f"{provider} is not configured.",
+            "detections": [],
+        }
+
+    try:
+        detections, source = run_inference(frames, provider)
+        return {
+            "provider": provider,
+            "source": source,
+            "available": True,
+            "error": None,
+            "detections": detections,
+        }
+    except Exception as e:
+        return {
+            "provider": provider,
+            "source": source_name,
+            "available": True,
+            "error": str(e),
+            "detections": [],
+        }
+
+
+def _labels_by_frame(detections: list[RawDetection]) -> dict[Optional[float], set[str]]:
+    labels: dict[Optional[float], set[str]] = {}
+    for detection in detections:
+        labels.setdefault(detection.get("frameTimestamp"), set()).add(detection["label"])
+    return labels
+
+
+def _status_conflicts(
+    frame_key: Optional[float],
+    roboflow_labels: set[str],
+    qwen_labels: set[str],
+) -> list[str]:
+    conflicts = []
+    for present_label, missing_label, item_name in (
+        ("helmet", "no_helmet", "helmet"),
+        ("vest", "no_vest", "vest"),
+    ):
+        if present_label in roboflow_labels and missing_label in qwen_labels:
+            conflicts.append(f"Frame {frame_key}: Roboflow sees {item_name}; Qwen sees missing {item_name}.")
+        if missing_label in roboflow_labels and present_label in qwen_labels:
+            conflicts.append(f"Frame {frame_key}: Roboflow sees missing {item_name}; Qwen sees {item_name}.")
+    return conflicts
+
+
+def _run_roboflow_or_raise(frames: list[dict]) -> list[RawDetection]:
+    if not ROBOFLOW_API_KEY:
+        raise ValueError("ROBOFLOW_API_KEY not set in environment")
+    from app.services.roboflow_service import run_roboflow_inference
+
+    return run_roboflow_inference(frames)
 
 
 def _call_qwen_vision(frames: list[dict]) -> list[RawDetection]:
@@ -60,10 +227,8 @@ def _call_qwen_vision(frames: list[dict]) -> list[RawDetection]:
             frame_detections = _analyze_frame_with_qwen(frame["path"], frame.get("frameTimestamp"))
             detections.extend(frame_detections)
         except Exception as e:
-            # On error, fall back to mock for this frame
             print(f"Warning: Qwen inference failed for frame {frame['path']}: {e}")
-            mock_detection = _generate_mock_detections([frame])
-            detections.extend(mock_detection)
+            raise
 
     return detections
 

@@ -136,17 +136,12 @@ If Qwen Vision is not reliable enough for bounding boxes or class-level PPE dete
 
 Current Implementation Status
 
-`app/services/vision_service.py` implements `run_inference(frames)`, which is the
-single entry point the `/uploads/{upload_id}/analyze` endpoint calls.
+`app/services/vision_service.py` implements the inference routing used by
+`POST /uploads/{upload_id}/analyze`.
 
-Inference priority (first available wins):
+Default `modelProvider: "auto"` priority (first available wins):
 
-1. **Qwen Vision** (if `QWEN_API_KEY` is set)
-   - Real Qwen3-VL30B client via `dashscope.aliyuncs.com`
-   - Returns structured JSON with detections: person, helmet, no_helmet, vest, no_vest
-   - Source: "qwen_vision"
-
-2. **Roboflow** (if `ROBOFLOW_API_KEY` is set)
+1. **Roboflow** (if `ROBOFLOW_API_KEY` is set)
    - Hosted inference API via `serverless.roboflow.com`
    - Model: personal-protective-equipment-combined-model/8
    - Returns object detections with class, confidence, and bounding box
@@ -154,13 +149,23 @@ Inference priority (first available wins):
    - Source: "roboflow"
    - Implementation: `app/services/roboflow_service.py`
 
+2. **Qwen Vision** (if `QWEN_API_KEY` is set)
+   - Real Qwen client via `dashscope.aliyuncs.com`
+   - Experimental structured output for person, helmet, no_helmet, vest, no_vest
+   - Source: "qwen_vision"
+   - Best used as a comparison or explanation path, not the primary operational detector
+
 3. **Mock Generator** (fallback, always available)
    - Deterministic-per-frame mock generator
    - Produces realistic person/PPE detection mixes
    - Source: "manual_mock"
 
-Each backend is fully isolated. If any call fails, the next option is tried
-automatically, preserving demo reliability.
+The analyze request can also set `modelProvider` to `"roboflow"`,
+`"qwen_vision"`, `"manual_mock"`, or `"compare"`. Explicit Roboflow/Qwen
+requests fall back to mock detections if the requested provider fails. Compare
+mode runs Roboflow and Qwen side by side, returns an agreement report, and uses
+Roboflow as the primary source when available. Only primary detections are
+persisted and passed into the rule engine.
 
 4. Detection Parser
 
@@ -401,7 +406,7 @@ backend/
       alerts.py           [done]
       summaries.py        [pending: Phase 7]
     services/
-      vision_service.py   [done — mock detector; Qwen client deferred to Phase 3.5]
+      vision_service.py   [done — Roboflow-first auto routing, Qwen comparison, mock fallback]
       detection_parser.py [done]
       rule_engine.py       [done]
       media_service.py     [pending: not yet broken out, frame extraction lives in utils/video_frames.py]
@@ -535,8 +540,9 @@ DATABASE_URL=sqlite:///./safety_sentinel.db
 # Frontend
 NEXT_PUBLIC_API_URL=http://localhost:8000
 
-Note: API keys can be omitted individually. The system will use the first available
-inference backend. Roboflow requires an API key to `serverless.roboflow.com` for the
+Note: API keys can be omitted individually. The default `auto` provider tries
+Roboflow first, then Qwen, then deterministic mock detections. Roboflow requires
+an API key to `serverless.roboflow.com` for the
 personal-protective-equipment-combined-model/8.
 
 `inference-sdk` (the Roboflow client) unconditionally depends on `supervision`

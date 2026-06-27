@@ -128,18 +128,27 @@ POST /uploads/{upload_id}/analyze
 
 Run PPE analysis on an uploaded image or video.
 
-Note: Qwen3-VL30B integration is deferred until `QWEN_API_KEY` and a verified
-model contract are available (see todo.md Phase 3.5). Until then, every call
-returns mock detections with `source: "manual_mock"`. When `createAlerts` is
-true (default), mock alerts are generated from the created safety events per
-the routing rule in [ARCHITECTURE.md#mock-alert-center](ARCHITECTURE.md);
-`positive_observation` events never produce an alert, so `alerts` may be
-shorter than `events` or empty.
+The `modelProvider` controls inference routing:
+
+* `auto` (default): Roboflow first, then Qwen Vision, then deterministic mock detections.
+* `roboflow`: Roboflow PPE model, with mock fallback if Roboflow fails.
+* `qwen_vision`: Qwen Vision structured output, with mock fallback if Qwen fails.
+* `manual_mock`: Deterministic mock detections for demo reliability.
+* `compare`: Runs Roboflow and Qwen side by side and returns an agreement report.
+
+Roboflow is the preferred detector for operational safety events because it is
+trained as an object-detection model for PPE classes. Qwen Vision is available
+as an experimental comparison path. In `compare` mode, only the primary source
+is persisted and passed into the rule engine; comparison detections are returned
+for evaluation/reporting only. When `createAlerts` is true (default), mock
+alerts are generated from the created safety events per the routing rule in
+[ARCHITECTURE.md#mock-alert-center](ARCHITECTURE.md); `positive_observation`
+events never produce an alert, so `alerts` may be shorter than `events` or empty.
 
 Request
 
 {
-  "modelProvider": "qwen_vision",
+  "modelProvider": "auto",
   "createEvents": true,
   "createAlerts": true
 }
@@ -149,6 +158,8 @@ Response
 {
   "uploadId": "upl_123",
   "status": "processed",
+  "modelProvider": "auto",
+  "primarySource": "roboflow",
   "detections": [
     {
       "id": "det_001",
@@ -162,7 +173,7 @@ Response
         "width": 220,
         "height": 520
       },
-      "source": "qwen_vision",
+      "source": "roboflow",
       "createdAt": "2026-06-27T14:31:00Z"
     },
     {
@@ -177,7 +188,7 @@ Response
         "width": 80,
         "height": 70
       },
-      "source": "qwen_vision",
+      "source": "roboflow",
       "createdAt": "2026-06-27T14:31:00Z"
     }
   ],
@@ -205,6 +216,52 @@ Response
       "createdAt": "2026-06-27T14:31:03Z"
     }
   ]
+}
+
+Compare response extension
+
+When `modelProvider` is `compare`, the normal response also includes a
+`comparison` object. `detections`, `events`, and `alerts` still represent the
+primary source only.
+
+{
+  "uploadId": "upl_123",
+  "status": "processed",
+  "modelProvider": "compare",
+  "primarySource": "roboflow",
+  "detections": [],
+  "events": [],
+  "alerts": [],
+  "comparison": {
+    "roboflow": {
+      "provider": "roboflow",
+      "source": "roboflow",
+      "available": true,
+      "error": null,
+      "detections": []
+    },
+    "qwen": {
+      "provider": "qwen_vision",
+      "source": "roboflow",
+      "available": true,
+      "error": null,
+      "detections": []
+    },
+    "agreement": {
+      "matchingLabels": ["person", "helmet"],
+      "roboflowOnly": ["no_vest"],
+      "qwenOnly": [],
+      "conflicts": [],
+      "frames": [
+        {
+          "frameTimestamp": null,
+          "matchingLabels": ["person", "helmet"],
+          "roboflowOnly": ["no_vest"],
+          "qwenOnly": []
+        }
+      ]
+    }
+  }
 }
 
 Detections
