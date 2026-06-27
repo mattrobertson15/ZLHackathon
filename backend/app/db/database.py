@@ -13,10 +13,12 @@ Base = declarative_base()
 def init_db():
     from app.models import (  # noqa: F401  (ensure models are registered)
         alert_record,
+        camera,
         detection_result,
         safety_event,
         summary,
         upload,
+        zone,
     )
 
     Base.metadata.create_all(bind=engine)
@@ -28,6 +30,8 @@ def _apply_migrations():
     from sqlalchemy import text
 
     new_columns = [
+        "ALTER TABLE uploads ADD COLUMN zone_id VARCHAR",
+        "ALTER TABLE uploads ADD COLUMN camera_id VARCHAR",
         "ALTER TABLE detection_results ADD COLUMN frame_url TEXT",
         "ALTER TABLE safety_events ADD COLUMN status_updated_at DATETIME",
         "ALTER TABLE safety_events ADD COLUMN review_note TEXT",

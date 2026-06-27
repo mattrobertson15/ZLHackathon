@@ -6,10 +6,10 @@ import { loadDemoScenario } from "@/lib/api";
 import type { DemoScenarioResponse } from "@/lib/types";
 
 const scenarioSteps = [
-  "Load curated worksite uploads",
-  "Review generated PPE detections",
+  "Load zone-tagged worksite uploads",
+  "Review zone-aware PPE detections",
   "Open structured safety events",
-  "Show mock alerts and dashboard movement",
+  "Show mock alerts incl. repeated-zone issues",
   "Generate a supervisor-ready summary",
 ];
 
@@ -70,9 +70,10 @@ export default function DemoPage() {
                   Load Scenario Data
                 </h2>
                 <p className="text-gray-600 mb-5">
-                  Seeds three processed uploads with realistic PPE detections,
-                  six safety events, and four mock alerts. Re-running replaces
-                  this demo scenario without clearing other app data.
+                  Seeds seven zone-tagged uploads with realistic PPE detections,
+                  eight safety events, and six mock alerts — including a repeated
+                  zone violation. Re-running replaces this demo scenario without
+                  clearing other app data.
                 </p>
                 <button
                   onClick={handleLoadScenario}
@@ -86,25 +87,25 @@ export default function DemoPage() {
               <div className="grid grid-cols-2 gap-3 min-w-56">
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="text-2xl font-bold text-gray-900">
-                    {result?.counts.uploads ?? 3}
+                    {result?.counts.uploads ?? 7}
                   </div>
                   <div className="text-sm text-gray-600">Uploads</div>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="text-2xl font-bold text-gray-900">
-                    {result?.counts.events ?? 6}
+                    {result?.counts.events ?? 8}
                   </div>
                   <div className="text-sm text-gray-600">Events</div>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="text-2xl font-bold text-gray-900">
-                    {result?.counts.alerts ?? 4}
+                    {result?.counts.alerts ?? 6}
                   </div>
                   <div className="text-sm text-gray-600">Alerts</div>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="text-2xl font-bold text-gray-900">
-                    {result?.counts.detections ?? 9}
+                    {result?.counts.detections ?? 16}
                   </div>
                   <div className="text-sm text-gray-600">Detections</div>
                 </div>
@@ -187,16 +188,16 @@ export default function DemoPage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-700">
             <div className="border border-gray-200 rounded-lg p-4">
-              <div className="font-semibold text-gray-900 mb-1">Detection</div>
-              <p>Person, helmet, vest, missing helmet, and missing vest observations.</p>
+              <div className="font-semibold text-gray-900 mb-1">Zone-aware rules</div>
+              <p>The same no-vest detection is a high-severity violation at the Loading Dock but a non-event on the General Floor where vests are not required.</p>
             </div>
             <div className="border border-gray-200 rounded-lg p-4">
-              <div className="font-semibold text-gray-900 mb-1">Workflow</div>
-              <p>Open violations, reviewed coaching items, and manual review routing.</p>
+              <div className="font-semibold text-gray-900 mb-1">Repeated zone issues</div>
+              <p>Three no-vest violations at the Loading Dock this week trigger a repeated-violation alert — no employee identity involved.</p>
             </div>
             <div className="border border-gray-200 rounded-lg p-4">
               <div className="font-semibold text-gray-900 mb-1">Reporting</div>
-              <p>Dashboard metrics, trends, mock alerts, and summary generation.</p>
+              <p>Dashboard metrics, repeated-zone issues, trends, mock alerts, and summary generation.</p>
             </div>
           </div>
         </section>

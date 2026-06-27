@@ -169,25 +169,34 @@ Included in MVP
 * Upload video
 * Run visual safety analysis
 * Detect person, helmet/no helmet, vest/no vest
+* Tag uploads with a zone (or a pre-registered camera that supplies its zone)
+* Apply zone-aware PPE rules (per-zone required PPE + severity overrides)
 * Generate safety events
+* Detect repeated zone violations (same zone + violation type, weekly window)
 * View annotated results
 * Track violation counts
 * View compliance percentage
 * View violation type breakdown
+* View repeated zone issues on the dashboard
 * View trends over time
 * Generate AI safety summaries
 * Download markdown safety reports
-* Display mock alerts in an alert center
+* Display mock alerts in an alert center (incl. repeated-violation alerts)
+
+See [ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md) for the combined zone/camera and
+repeated-violation design.
 
 Not Included in MVP
 
 * Live camera stream ingestion
+* Authenticated camera ingest / API-key issuance (cameras are seeded for assignment)
 * Facial recognition
-* Employee identification
+* Employee identification (repeated-violation detection is zone-based only)
 * Real SMS/email/Slack alerts
 * Production-grade incident escalation
 * HR or badge-system integration
 * Automated disciplinary workflows
+* Zone/camera admin UI (zones and cameras are seeded)
 
 Tech Stack
 
@@ -249,8 +258,36 @@ type Upload = {
   fileName: string;
   fileType: "image" | "video";
   fileUrl: string;
+  zoneId?: string | null;          // canonical location (-> Zone.id)
+  cameraId?: string | null;        // assigned camera (supplies the zone)
+  zoneDisplayName?: string | null; // resolved convenience field
+  locationLabel?: string | null;   // legacy free-text fallback
   uploadedAt: string;
   status: "uploaded" | "processing" | "processed" | "failed";
+};
+
+Zone
+
+A named area with a PPE policy; the canonical location for an upload.
+
+type Zone = {
+  id: string;                    // slug, e.g. "loading-dock"
+  displayName: string;
+  requiredPpe: string[];         // e.g. ["vest"]
+  severityOverrides: Record<string, string>; // e.g. { "no_vest": "high" }
+  createdAt: string;
+};
+
+Camera
+
+A clip source pre-assigned to a zone; uploads can inherit a camera's zone.
+
+type Camera = {
+  id: string;
+  displayName: string;
+  zoneId: string;
+  status: "active" | "inactive";
+  createdAt: string;
 };
 
 DetectionResult
@@ -295,7 +332,7 @@ Represents a mock alert generated from a safety event.
 type AlertRecord = {
   id: string;
   safetyEventId: string;
-  alertType: "supervisor_review" | "coaching_reminder" | "manual_review";
+  alertType: "supervisor_review" | "coaching_reminder" | "manual_review" | "repeated_violation";
   title: string;
   message: string;
   status: "draft" | "queued" | "sent" | "dismissed"; // "sent" represents mock delivery in MVP

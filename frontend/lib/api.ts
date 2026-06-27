@@ -8,6 +8,8 @@ import {
   SafetySummary,
   AnalyzeResponse,
   ModelProvider,
+  Zone,
+  Camera,
   UploadResults,
 } from "./types";
 import type { DemoScenarioResponse } from "./types";
@@ -60,12 +62,14 @@ export async function getUpload(uploadId: string): Promise<Upload> {
 export async function uploadFile(
   file: File,
   locationLabel?: string,
-  notes?: string
+  notes?: string,
+  zoneId?: string
 ): Promise<Upload> {
   const formData = new FormData();
   formData.append("file", file);
   if (locationLabel) formData.append("locationLabel", locationLabel);
   if (notes) formData.append("notes", notes);
+  if (zoneId) formData.append("zoneId", zoneId);
 
   const response = await fetch(`${API_BASE_URL}/uploads`, {
     method: "POST",
@@ -174,6 +178,17 @@ export async function updateAlert(
     body: JSON.stringify({ status }),
   });
   return data.alert;
+}
+
+// Zones & Cameras API
+export async function listZones(): Promise<Zone[]> {
+  const data = await apiCall<{ zones: Zone[] }>("/zones");
+  return data.zones;
+}
+
+export async function listCameras(): Promise<Camera[]> {
+  const data = await apiCall<{ cameras: Camera[] }>("/cameras");
+  return data.cameras;
 }
 
 // Analytics API

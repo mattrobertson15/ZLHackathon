@@ -198,6 +198,36 @@ type DetectionResult = {
   createdAt: string;
 };
 
+Zones & Cameras (Location Schema)
+
+The shared location schema underpins both zone-aware rules and repeated-zone
+analytics. Zones and demo cameras are seeded at startup
+(`app/db/seeds.py`) when their tables are empty; they are read via
+`GET /zones` and `GET /cameras`.
+
+type Zone = {
+  id: string;                    // slug, e.g. "loading-dock"
+  displayName: string;
+  requiredPpe: string[];         // e.g. ["vest"]
+  severityOverrides: Record<string, string>; // e.g. { "no_vest": "high" }
+  createdAt: string;
+};
+
+type Camera = {
+  id: string;                    // slug, e.g. "cam-02"
+  displayName: string;
+  zoneId: string;                // -> Zone.id
+  status: "active" | "inactive";
+  createdAt: string;
+};
+
+An Upload carries a nullable `zoneId` (canonical location) and `cameraId`. When
+an upload is assigned to a camera, it inherits the camera's zone. The legacy
+`locationLabel` is retained as a free-text fallback. The "resolved location" for
+grouping/analytics is `zoneId || locationLabel`. Authenticated camera ingest and
+API-key issuance are intentionally out of scope; see
+[ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md).
+
 5. Rule Engine
 
 The rule engine converts detections into compliance statuses and safety events.
@@ -222,12 +252,25 @@ no_vest -> medium
 uncertain_review -> low or medium
 positive_observation -> low
 
+Zone-Aware Rules (implemented)
+
+`rule_engine.evaluate(detections, upload_id, zone=None)` resolves the upload's
+zone (from `upload.zone_id`) and applies zone policy:
+
+* When `zone` is None, the global MVP rules above apply unchanged (legacy /
+  untagged uploads).
+* When a zone is present, a PPE item only produces an event if the zone requires
+  it. A `no_vest` in a vest-required zone is a violation; the same `no_vest` in a
+  helmet-only zone produces no event at all.
+* A zone's `severityOverrides` can escalate a required violation (e.g. the
+  Loading Dock escalates `no_vest` from the default `medium` to `high`).
+
+See [ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md) and the zones/cameras component
+below.
+
 Future Rules
 
-* Zone-specific PPE requirements
 * Confidence threshold overrides
-* Repeated violation detection
-* Location-aware escalation
 * Shift-level trend analysis
 * Supervisor approval workflows
 
@@ -264,7 +307,11 @@ The MVP should not send real alerts. Instead, it should create mock alert record
 type AlertRecord = {
   id: string;
   safetyEventId: string;
-  alertType: "supervisor_review" | "coaching_reminder" | "manual_review";
+  alertType:
+    | "supervisor_review"
+    | "coaching_reminder"
+    | "manual_review"
+    | "repeated_violation";
   title: string;
   message: string;
   status: "draft" | "queued" | "sent_mock" | "dismissed";
@@ -283,6 +330,13 @@ events. Routing rule:
 * Otherwise `severity == "medium"` → `coaching_reminder`.
 * Any remaining case (e.g. a non-positive low-severity event) falls back to
   `manual_review`.
+
+In addition, `repeated_violation_service.generate_repeated_violation_alerts` runs
+after events are persisted: if a new violation pushes its resolved-location group
+to the weekly threshold (3) and no `repeated_violation` alert already covers that
+group, one `repeated_violation` alert is created, linked to the latest event in
+the group. Dedup resolves each existing repeated alert back to its group, so
+re-analysis does not produce duplicates.
 
 Alerts are stored in the `alert_records` table and exposed via `GET /alerts`
 (filterable by `status`/`alertType`) and `PATCH /alerts/{alert_id}` for mock
@@ -308,6 +362,17 @@ MVP Metrics
 * Positive safety observations
 * Open events
 * Events by severity
+* Repeated zone violations (weekly window)
+
+Repeated Zone Violations
+
+`repeated_violation_service.compute_repeated_violations` groups `ppe_violation`
+events over a rolling 7-day window by resolved location (`zoneId ||
+locationLabel`) and violation type, surfacing groups at or above the threshold
+(3) as `repeatedViolations` on `GET /analytics/overview`. The aggregation is a
+pure function (`aggregate_repeated_violations`) so it is unit-tested without a
+DB. No employee identity is used — grouping is "same zone / same violation type"
+only.
 
 Compliance Percentage
 
@@ -640,11 +705,16 @@ The MVP intentionally avoids:
 
 Future Architecture Extensions
 
-* Live camera ingestion
+* Authenticated camera ingestion (API-key issuance/rotation; clip POST endpoint)
 * Real-time stream processing
 * Multi-site dashboards
-* Zone-specific PPE policies
+* Zone/camera admin UI (zones and cameras are seeded today)
+* Configurable repeated-violation thresholds
 * Role-based access control
+
+Zone-specific PPE policies and repeated-zone violation detection are implemented;
+see the Rule Engine, Analytics Layer sections and
+[ZONE_CAMERA_PLAN.md](ZONE_CAMERA_PLAN.md).
 * Human review workflows
 * Integrations with Slack, Teams, email, and SMS
 * Integration with EHS systems
