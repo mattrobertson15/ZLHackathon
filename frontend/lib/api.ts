@@ -277,6 +277,20 @@ export async function createCamera(params: {
   return data.camera;
 }
 
+export interface TestStreamResult {
+  status: "connected" | "failed";
+  message: string;
+  width?: number;
+  height?: number;
+}
+
+export async function testStream(rtspUrl: string): Promise<TestStreamResult> {
+  return apiCall<TestStreamResult>("/cameras/test-stream", {
+    method: "POST",
+    body: JSON.stringify({ rtspUrl }),
+  });
+}
+
 export async function startCamera(cameraId: string): Promise<Camera> {
   const data = await apiCall<{ camera: Camera }>(`/cameras/${cameraId}/start`, {
     method: "POST",

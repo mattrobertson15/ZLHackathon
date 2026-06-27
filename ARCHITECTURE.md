@@ -526,7 +526,7 @@ type Camera = {
   rtspUrl?: string;
   streamStatus: "offline" | "live" | "error";   // feed connectivity
   monitoring: boolean;
-  captureIntervalSeconds: number;   // default 15, min 5
+  captureIntervalSeconds: number;   // default 15, min 1 (use 1–2 for live demos)
   lastCaptureAt?: string;
   lastError?: string;
 };
@@ -547,7 +547,25 @@ stream with `cv2.VideoCapture` (OpenCV's bundled ffmpeg backend — no new
 dependency) and writes a few spaced JPEGs into `UPLOAD_STORAGE_PATH`, returning
 the same `{framePath, frameTimestamp}` shape as `utils/video_frames.py`. RTSP is
 read over TCP (`OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp`, defaulted in
-`config.py`) for reliability.
+`config.py`) for reliability. The live monitor favors a snappy cycle over many
+frames (`LIVE_CAPTURE_NUM_FRAMES=2`, `LIVE_CAPTURE_SPACING_SECONDS=0.5` in
+`camera_monitor.py`) so a walk-by is caught within ~1–2s. The monitor tick is
+`1.0s` so a 1–2s capture interval is actually honored.
+
+Duplicate suppression. A person lingering in frame would otherwise raise a fresh
+event + alert every cycle. After each capture's pipeline run,
+`camera_monitor._dedup_violation_events` keeps at most one open event per
+`(camera, violationType)` within `DEDUP_WINDOW_SECONDS=30` — dropping both
+intra-capture duplicates (the rule engine fires once per frame) and repeats of a
+violation already open from a recent cycle, deleting the redundant events and
+their alerts (`repositories.find_recent_open_violation_for_camera` +
+`delete_safety_events_with_alerts`). This is camera-flow only; the upload path is
+untouched. (Distinct from the weekly per-zone repeated-violation insight, which
+is intentional aggregation, not deduplication.)
+
+Connectivity probe. `POST /cameras/test-stream` grabs a single frame from an RTSP
+URL without registering a camera, so the user can confirm a feed is reachable
+from the backend before starting monitoring (see [API.md](API.md)).
 
 Background monitor. `app/services/camera_monitor.py` runs one daemon thread,
 started from `main.py` on startup and stopped on shutdown. Each tick it captures
@@ -569,7 +587,30 @@ Camera processing flow:
 3. The monitor thread captures frames on the interval thereafter.
 4. Each cycle creates a `camera` Upload, runs `run_analysis_pipeline`, and persists detections/events/alerts.
 5. Events flow into the existing Dashboard, Events, Alerts, and Analytics views.
-6. The Cameras page polls `snapshot` + camera state for a near-live view.
+6. The Cameras page polls `snapshot` + camera state for a near-live view; the
+   per-camera detail page (`/app/cameras/[cameraId]`) additionally shows a red
+   "Live Violation Detected" banner when the latest event is a fresh open
+   violation — the demo money shot.
+
+Live phone camera (hosted on Fly). A phone makes a believable live CCTV feed, but
+its RTSP URL is a private LAN address the cloud can't dial into. So we reverse the
+direction: the phone **pushes** its stream to a **MediaMTX relay** and the backend
+**pulls** from the relay over Fly's private network — identical to how the backend
+pulls the `ffmpeg` file emulator today, just with a live publisher.
+
+```
+Phone (Larix Broadcaster) ──push RTMP (outbound)──► MediaMTX relay on Fly (public :1935, auth)
+                                                          │ rtsp://safety-sentinel-relay.internal:8554/phone-demo
+                                                          ▼
+                                                  safety-sentinel-api (camera monitor → pipeline)
+```
+
+The relay app lives in [`relay/`](relay/) (`mediamtx.yml` + `Dockerfile` +
+`fly.toml`): publish requires a password, only RTMP `1935` is exposed publicly,
+and RTSP `8554` stays on Fly's private `.internal` network. No backend code
+changes — the monitor pulls RTSP exactly as before. Because the backend Fly
+Machine is always-on (`min_machines_running=1`), the monitor runs there (it is
+only disabled on Vercel). See [relay/README.md](relay/README.md).
 
 Backend Folder Structure
 

@@ -13,6 +13,33 @@ function complianceFromEvents(events: SafetyEvent[]): number {
   return Math.round(((events.length - violations) / events.length) * 100);
 }
 
+const VIOLATION_LABELS: Record<string, string> = {
+  no_helmet: "No Hard Hat",
+  no_vest: "No Safety Vest",
+};
+
+// A violation counts as "live" if it's still open and was seen very recently.
+const LIVE_VIOLATION_WINDOW_MS = 60_000;
+
+function liveViolation(
+  events: SafetyEvent[],
+  nowMs: number
+): SafetyEvent | null {
+  const latest = events[0]; // events arrive newest-first from the API
+  if (
+    latest &&
+    latest.eventType === "ppe_violation" &&
+    latest.status === "open" &&
+    nowMs - new Date(latest.createdAt).getTime() <= LIVE_VIOLATION_WINDOW_MS
+  ) {
+    return latest;
+  }
+  return null;
+}
+
+// Poll cadence for the near-live preview + events on the detail page.
+const POLL_INTERVAL_MS = 2000;
+
 export default function CameraDetailPage({
   params,
 }: {
@@ -22,6 +49,8 @@ export default function CameraDetailPage({
   const [detail, setDetail] = useState<CameraDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Bumped each poll to cache-bust the snapshot <img> for a near-live preview.
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     params.then((p) => setCameraId(p.cameraId));
@@ -29,10 +58,32 @@ export default function CameraDetailPage({
 
   useEffect(() => {
     if (!cameraId) return;
-    getCamera(cameraId)
-      .then(setDetail)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load camera"))
-      .finally(() => setLoading(false));
+    let active = true;
+    const load = () =>
+      getCamera(cameraId)
+        .then((d) => {
+          if (!active) return;
+          setDetail(d);
+          setError(null);
+        })
+        .catch((err) => {
+          if (active)
+            setError(err instanceof Error ? err.message : "Failed to load camera");
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+
+    load();
+    // Poll so new captures, violations, and the snapshot appear "live".
+    const id = setInterval(() => {
+      setTick((t) => t + 1);
+      load();
+    }, POLL_INTERVAL_MS);
+    return () => {
+      active = false;
+      clearInterval(id);
+    };
   }, [cameraId]);
 
   if (loading) {
@@ -56,7 +107,8 @@ export default function CameraDetailPage({
   const { camera, captures, events } = detail;
   const violations = events.filter((e) => e.eventType === "ppe_violation").length;
   const compliance = complianceFromEvents(events);
-  const snapshotUrl = cameraSnapshotUrl(camera.id);
+  const snapshotUrl = cameraSnapshotUrl(camera.id, tick);
+  const live = liveViolation(events, Date.now());
 
   const streamStatusColors: Record<string, string> = {
     live: "bg-green-500",
@@ -87,6 +139,34 @@ export default function CameraDetailPage({
           <span className="font-mono text-xs truncate max-w-xs">{camera.rtspUrl}</span>
         )}
       </div>
+
+      {/* Live violation banner — the demo money shot */}
+      {live && (
+        <div className="bg-red-600 text-white rounded-lg shadow-lg p-5 mb-6 flex items-center gap-4 animate-pulse">
+          <span className="text-3xl" aria-hidden>
+            ⚠️
+          </span>
+          <div className="flex-1">
+            <div className="text-xs font-semibold uppercase tracking-wide opacity-90">
+              Live Violation Detected
+            </div>
+            <div className="text-xl font-bold">
+              {live.violationType
+                ? VIOLATION_LABELS[live.violationType] ?? live.violationType
+                : "PPE Violation"}
+            </div>
+            <div className="text-sm opacity-90">
+              {camera.displayName} · {Math.round(live.confidence * 100)}% confidence ·{" "}
+              {new Date(live.createdAt).toLocaleTimeString()}
+            </div>
+          </div>
+          <div className="hidden sm:block text-right text-xs opacity-90">
+            <div>Mock Slack alert sent</div>
+            <div>Mock SMS alert sent</div>
+            <div>Safety manager notified</div>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

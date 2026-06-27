@@ -237,6 +237,46 @@ Technical note: continuous monitoring needs an always-on process, so this stack
 runs as containers on a persistent host rather than on serverless. The RTSP feed
 stays on a private network — only the API is exposed.
 
+Headline Demo Step: Live Phone Camera (the walk-by)
+
+This is the most tangible version of the story — a phone acts as a live CCTV
+camera and you walk into frame without a hard hat. Because the backend is hosted
+on Fly (the cloud can't dial into a phone on Wi-Fi), the phone **pushes** its
+stream to a MediaMTX relay and the backend pulls it over Fly's private network.
+Full setup in [relay/README.md](relay/README.md).
+
+Setup (before the demo):
+
+1. Deploy the relay app once (`cd relay && fly launch … && fly deploy`) and set a
+   publish password in `relay/mediamtx.yml`.
+2. Install **Larix Broadcaster** on the phone (a push app — not an RTSP server
+   app) and point it at `rtmp://safety-sentinel-relay.fly.dev:1935/phone-demo`.
+
+During the demo:
+
+1. Start broadcasting from the phone.
+2. Cameras page → paste `rtsp://safety-sentinel-relay.internal:8554/phone-demo`
+   → click **Test Stream** → it reports "Connected · 1280×720".
+3. Register the camera (zone `general-floor`, interval `1–2s`) → **Start monitoring**.
+4. Open the camera detail page (`View camera analytics →`).
+5. **Walk into frame without a hard hat.** Within ~1–2s a "No Hard Hat" violation
+   is raised: the red **"Live Violation Detected"** banner appears with the
+   confidence and time, a snapshot is attached, and the event flows to the
+   Events, Alerts, and Dashboard pages. Linger in frame — duplicate alerts are
+   suppressed (one event per ~30s), so the demo stays clean.
+
+Suggested narration:
+
+Safety Sentinel speaks RTSP — the same protocol IP cameras and CCTV systems use.
+Here the "camera" is my phone, but to the backend it's just a stream. When I step
+in without a hard hat, the system detects the missing PPE, captures a snapshot,
+creates a structured safety event, and raises an alert — live. In a real facility
+this same pipeline points at existing cameras and gives safety teams compliance
+trends, incident review, and automated alerts.
+
+Fallback: if the phone link drops on stage, switch the camera's RTSP URL to the
+`worksite-demo` file emulator, or run `Load demo scenario` for seeded data.
+
 Closing Pitch
 
 Suggested closing:
