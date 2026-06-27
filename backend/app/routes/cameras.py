@@ -2,7 +2,6 @@ import os
 import shutil
 import tempfile
 
-import cv2
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -130,6 +129,7 @@ def test_stream(request: TestStreamRequest):
         captured = capture_frames_from_rtsp(
             request.rtspUrl, scratch_dir, num_frames=1, spacing_seconds=0
         )
+        import cv2  # noqa: PLC0415 — lazy import; cv2 not available on Vercel
         frame = cv2.imread(captured[0]["framePath"])
         if frame is None:
             raise ValueError("Captured frame could not be decoded.")

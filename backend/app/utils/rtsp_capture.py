@@ -10,8 +10,6 @@ See ARCHITECTURE.md#camera--rtsp-ingestion-layer.
 import os
 import time
 
-import cv2
-
 DEFAULT_NUM_FRAMES = 4
 DEFAULT_SPACING_SECONDS = 1.0
 # Guard against a dead/blocked stream wedging the capture loop.
@@ -28,6 +26,8 @@ def capture_frames_from_rtsp(
 
     Raises ValueError if the stream cannot be opened or yields no frames.
     """
+    import cv2  # noqa: PLC0415 — lazy import; cv2 not available on Vercel
+
     os.makedirs(output_dir, exist_ok=True)
 
     capture = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)

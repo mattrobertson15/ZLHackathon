@@ -1,7 +1,5 @@
 import os
 
-import cv2
-
 MIN_FRAME_INTERVAL_SECONDS = 1.0
 MAX_FRAME_INTERVAL_SECONDS = 2.0
 MAX_FRAMES = 30
@@ -12,6 +10,8 @@ def extract_frames(video_path: str, output_dir: str, max_frames: int = MAX_FRAME
 
     Returns a list of dicts: {"framePath": str, "frameTimestamp": float}
     """
+    import cv2  # noqa: PLC0415 — lazy import; cv2 not available on Vercel
+
     os.makedirs(output_dir, exist_ok=True)
 
     capture = cv2.VideoCapture(video_path)
