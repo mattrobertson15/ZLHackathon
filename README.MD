@@ -62,6 +62,12 @@ The system can classify each observation into a safety status:
 * Warning: PPE status is uncertain or incomplete.
 * Violation: Required PPE appears missing.
 
+Zone-Aware PPE Rules
+
+Each upload is tagged with a zone (or a pre-registered camera that supplies its zone). Zones define which PPE items are required and can override default violation severities. This means a high-risk area like a chemical storage room can enforce stricter rules than a general warehouse aisle without any code changes.
+
+The system also detects repeated zone violations: when the same violation type recurs in the same zone within a rolling weekly window, it generates a dedicated alert so supervisors can address systemic issues rather than treating each event in isolation.
+
 Safety Event Log
 
 Each detection result is converted into a structured safety event.
@@ -407,14 +413,11 @@ Instead of waiting for incidents or manually reviewing footage, teams can use AI
 Future Enhancements
 
 * Live camera feed support
-* Zone-based PPE rules
-* Location-aware compliance analytics
 * Real alert integrations
 * Human review workflow
 * Supervisor approval queue
 * Custom PPE policy configuration
 * Multi-site benchmarking
-* Exportable compliance reports
 * Integration with existing safety management systems
 * Model fine-tuning on customer-specific worksites
 

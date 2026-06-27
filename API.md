@@ -556,6 +556,22 @@ The demo scenario seeds zone-tagged uploads that exercise both zone-aware rules
 detection on the General Floor is suppressed) and repeated-zone detection (three
 Loading Dock `no_vest` violations produce one `repeated_violation` alert).
 
+POST /admin/reset
+
+Deletes all `SafetyEvent`, `AlertRecord`, and `DetectionResult` rows. Triggered
+manually by the "Reset Incidents" button on the dashboard; data is never cleared
+automatically and persists in SQLite until this endpoint is called.
+
+Response
+
+{
+  "status": "success",
+  "message": "All incidents reset successfully"
+}
+
+Error — HTTP 500 with `{ "status": "error", "message": "<detail>" }` if the
+delete or commit fails.
+
 Analytics
 
 GET /analytics/overview

@@ -62,6 +62,8 @@ Suggested Pages
   Compliance metrics, trends, and violation breakdowns
 /demo
   Guided hackathon demo scenario loader and walkthrough links
+/library
+  All uploads with status badges and links to their results
 /events
   Safety event log
 /alerts
@@ -511,7 +513,7 @@ backend/
       vision_service.py   [done — Roboflow-first auto routing, Qwen comparison, mock fallback]
       detection_parser.py [done]
       rule_engine.py       [done]
-      media_service.py     [pending: not yet broken out, frame extraction lives in utils/video_frames.py]
+      media_service.py     [implemented in utils/video_frames.py]
       analytics_service.py [done]
       alert_service.py     [done]
       summary_service.py   [done]

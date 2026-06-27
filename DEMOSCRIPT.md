@@ -1,4 +1,4 @@
-DEMO_SCRIPT.md
+DEMOSCRIPT.md
 
 Safety Sentinel Demo Script
 
