@@ -1,9 +1,18 @@
+from urllib.parse import urlparse
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 from app.config import DATABASE_URL
 
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+if DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+else:
+    # psycopg2 drops the project-ref suffix from usernames like
+    # "postgres.project-ref" when parsing the URL, so pass it explicitly.
+    _parsed = urlparse(DATABASE_URL)
+    connect_args = {"user": _parsed.username} if _parsed.username else {}
+
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -30,19 +39,16 @@ def _apply_migrations():
     from sqlalchemy import text
 
     new_columns = [
-        "ALTER TABLE uploads ADD COLUMN zone_id VARCHAR",
-        "ALTER TABLE uploads ADD COLUMN camera_id VARCHAR",
-        "ALTER TABLE detection_results ADD COLUMN frame_url TEXT",
-        "ALTER TABLE safety_events ADD COLUMN status_updated_at DATETIME",
-        "ALTER TABLE safety_events ADD COLUMN review_note TEXT",
+        "ALTER TABLE uploads ADD COLUMN IF NOT EXISTS zone_id VARCHAR",
+        "ALTER TABLE uploads ADD COLUMN IF NOT EXISTS camera_id VARCHAR",
+        "ALTER TABLE detection_results ADD COLUMN IF NOT EXISTS frame_url TEXT",
+        "ALTER TABLE safety_events ADD COLUMN IF NOT EXISTS status_updated_at TIMESTAMP",
+        "ALTER TABLE safety_events ADD COLUMN IF NOT EXISTS review_note TEXT",
     ]
     with engine.connect() as conn:
         for stmt in new_columns:
-            try:
-                conn.execute(text(stmt))
-                conn.commit()
-            except Exception:
-                pass  # Column already exists
+            conn.execute(text(stmt))
+        conn.commit()
 
 
 def get_db():

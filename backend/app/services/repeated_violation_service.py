@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Repeated zone violation detection.
 
 Groups ``ppe_violation`` events over a rolling weekly window by a resolved

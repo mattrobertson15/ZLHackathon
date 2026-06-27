@@ -23,12 +23,6 @@ BLOB_READ_WRITE_TOKEN = os.getenv("BLOB_READ_WRITE_TOKEN", "")
 # storage to survive between requests when deployed there.
 USE_BLOB_STORAGE = IS_VERCEL and bool(BLOB_READ_WRITE_TOKEN)
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DB_PATH = (
-    Path("/tmp/safety_sentinel.db")
-    if IS_VERCEL
-    else PROJECT_ROOT / "backend" / "safety_sentinel.db"
-)
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DB_PATH}")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./safety_sentinel.db")
 
 os.makedirs(UPLOAD_STORAGE_PATH, exist_ok=True)

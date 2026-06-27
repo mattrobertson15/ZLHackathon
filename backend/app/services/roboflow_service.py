@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Roboflow PPE detection integration.
 
 Uses the hosted Roboflow PPE combined model for object detection.

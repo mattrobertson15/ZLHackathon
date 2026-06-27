@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Vision inference orchestration.
 
 See ARCHITECTURE.md#vision-inference-layer. Roboflow is the preferred PPE
