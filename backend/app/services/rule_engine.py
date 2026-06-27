@@ -57,14 +57,25 @@ def evaluate(
     for detection in detections:
         frames[detection.frame_timestamp].append(detection)
 
+    _VIOLATION_LABELS = {"no_vest", "no_helmet"}
+
     events: list[SafetyEvent] = []
     for frame_detections in frames.values():
         person = next((d for d in frame_detections if d.label == "person"), None)
-        if person is None:
+        ppe_detections = [d for d in frame_detections if d.label in _PPE_RULES]
+
+        # Violation labels (no_vest, no_helmet) already encode person presence —
+        # Roboflow's PPE model emits them without a separate "person" class. Fire
+        # violation events regardless of whether person was explicitly detected.
+        # Positive observations (vest, helmet) still require an explicit person to
+        # avoid false positives from PPE items not worn by anyone visible.
+        violation_detections = [d for d in ppe_detections if d.label in _VIOLATION_LABELS]
+        positive_detections = [d for d in ppe_detections if d.label not in _VIOLATION_LABELS]
+
+        if person is None and not violation_detections:
             continue
 
-        ppe_detections = [d for d in frame_detections if d.label in _PPE_RULES]
-        if not ppe_detections:
+        if person is not None and not ppe_detections:
             events.append(
                 _build_event(
                     upload_id,
@@ -77,10 +88,16 @@ def evaluate(
             )
             continue
 
-        for detection in ppe_detections:
+        for detection in violation_detections:
             event = _evaluate_detection(upload_id, detection, zone)
             if event is not None:
                 events.append(event)
+
+        if person is not None:
+            for detection in positive_detections:
+                event = _evaluate_detection(upload_id, detection, zone)
+                if event is not None:
+                    events.append(event)
 
     return events
 
