@@ -11,7 +11,11 @@ Base = declarative_base()
 
 
 def init_db():
-    from app.models import upload  # noqa: F401  (ensure models are registered)
+    from app.models import (  # noqa: F401  (ensure models are registered)
+        detection_result,
+        safety_event,
+        upload,
+    )
 
     Base.metadata.create_all(bind=engine)
 

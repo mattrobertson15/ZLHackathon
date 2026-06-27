@@ -19,24 +19,31 @@
 - [x] Implement upload status tracking (uploaded → processing → processed → failed)
 
 ## Phase 3: Vision Inference Integration
+- [x] Create detection parser to normalize Qwen outputs (`app/services/detection_parser.py`)
+- [x] Implement inference endpoint (`POST /uploads/{upload_id}/analyze`)
+- [x] Add mock detection fallback (for demo reliability if Qwen fails) — this is the active default until Phase 3.5 lands (`app/services/vision_service.py`)
+- [x] Store raw detection results in database (`detection_results` table)
+
+## Phase 3.5: Qwen Vision Client (Deferred — needs QWEN_API_KEY)
+The rest of Phase 3 is built and wired against `_generate_mock_detections`. Pick this
+up once `QWEN_API_KEY` and the Qwen3-VL30B request/response contract are available.
 - [ ] Integrate Qwen3-VL30B API client
   - Detection targets: person, helmet, no_helmet, vest, no_vest
   - Extract: label, confidence, bounding box, frame timestamp (for video)
-- [ ] Create detection parser to normalize Qwen outputs
-- [ ] Implement inference endpoint (`POST /uploads/{upload_id}/analyze`)
-- [ ] Add mock detection fallback (for demo reliability if Qwen fails)
-- [ ] Store raw detection results in database
+- [ ] Implement `_call_qwen_vision` in `app/services/vision_service.py` (currently raises `NotImplementedError`)
+- [ ] Verify real Qwen output shape matches `RawDetection`/detection-parser expectations; adjust parser if not
+- [ ] Confirm mock-fallback-on-failure behavior still works once the real client is live
 
 ## Phase 4: Rule Engine & Safety Events
-- [ ] Implement rule engine that converts detections → safety events
+- [x] Implement rule engine that converts detections → safety events (`app/services/rule_engine.py`)
   - person + helmet → positive observation
   - person + no_helmet → high-severity violation
   - person + vest → positive observation
   - person + no_vest → medium-severity violation
   - person + unclear PPE → uncertain_review
-- [ ] Create safety event creation logic
-- [ ] Implement event retrieval (`GET /events`, `GET /events/{event_id}`)
-- [ ] Implement event status updates (`PATCH /events/{event_id}`)
+- [x] Create safety event creation logic
+- [x] Implement event retrieval (`GET /events`, `GET /events/{event_id}`)
+- [x] Implement event status updates (`PATCH /events/{event_id}`)
 
 ## Phase 5: Mock Alert Generation
 - [ ] Implement alert creation from safety events
