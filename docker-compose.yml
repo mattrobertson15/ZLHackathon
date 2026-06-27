@@ -25,6 +25,11 @@ services:
       # these — the backend reaches mediamtx over the private network.
       - "8554:8554" # RTSP
       - "8888:8888" # HLS (optional smoother live preview)
+      # RTMP ingest. Required for a phone (Streamlabs/Larix) to PUSH a live feed
+      # into the LOCAL relay — point the app at rtmp://<your-laptop-LAN-ip>:1935/
+      # phone-demo. The bundled ffmpeg emulator doesn't need this (it pushes over
+      # the internal network), so it was previously unexposed.
+      - "1935:1935" # RTMP ingest (phone push)
     networks:
       - sentinel
 
