@@ -652,30 +652,41 @@ frontend/
 
 Processing Flow
 
+Steps 4-9 of both upload flows and the camera capture flow share a single
+implementation: `app/services/analysis_pipeline.py:run_analysis_pipeline`. This
+keeps the inference → detection → event → alert logic DRY across all three
+entry points.
+
 Image Upload Flow
 
 1. User uploads image.
 2. Frontend sends image to FastAPI.
 3. Backend stores file and creates Upload record.
-4. Backend sends image to vision model.
-5. Vision model returns detections.
-6. Detection parser normalizes results.
-7. Rule engine creates safety events.
-8. Alert service creates mock alerts when needed.
-9. Backend returns upload, detections, events, and alerts.
-10. Frontend displays annotated image and safety results.
+4-9. `run_analysis_pipeline` runs vision inference, normalizes detections,
+   applies zone-aware rule engine, and generates mock alerts.
+10. Backend returns upload, detections, events, and alerts.
+11. Frontend displays annotated image and safety results.
 
 Video Upload Flow
 
 1. User uploads video.
 2. Backend stores video and creates Upload record.
 3. Backend samples frames from the video.
-4. Each sampled frame is sent to vision model.
-5. Detections are normalized with frame timestamps.
-6. Rule engine creates safety events.
-7. Similar events may be grouped or deduplicated.
-8. Alert service creates mock alerts.
-9. Frontend displays summary results and key frames.
+4-9. `run_analysis_pipeline` runs inference on each sampled frame, normalizes
+   detections with frame timestamps, applies rule engine, and generates alerts.
+10. Frontend displays summary results and key frames.
+
+RTSP Camera Capture Flow
+
+See [§12 Camera / RTSP Ingestion Layer](#12-camera--rtsp-ingestion-layer) for
+the full flow. In brief:
+
+1. Camera monitor thread wakes for each `monitoring=True` camera that is due.
+2. `rtsp_capture.py` opens the RTSP stream (over TCP via OpenCV/ffmpeg) and
+   saves a few spaced JPEGs.
+3. A `camera`-sourced Upload row is created, inheriting the camera's `zone_id`.
+4-9. Same `run_analysis_pipeline` as the upload flows.
+10. Events appear in Dashboard, Events, and Alerts; camera state updated.
 
 Video Sampling Strategy
 
