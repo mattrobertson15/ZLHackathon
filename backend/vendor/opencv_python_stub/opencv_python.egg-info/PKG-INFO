@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: opencv-python
+Version: 4.10.0.84
+Summary: Stub satisfying inference-sdk's unconditional opencv-python dependency; this project uses opencv-python-headless instead
+Requires-Python: >=3.8

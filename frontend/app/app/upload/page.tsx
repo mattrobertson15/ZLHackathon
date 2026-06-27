@@ -56,9 +56,14 @@ export default function UploadPage() {
           <Link href="/app/dashboard" className="text-2xl font-bold text-gray-900">
             Safety Sentinel
           </Link>
-          <Link href="/app/dashboard" className="text-gray-600 hover:text-gray-900">
-            Back to Dashboard
-          </Link>
+          <div className="flex gap-4">
+            <Link href="/app/demo" className="text-gray-600 hover:text-gray-900">
+              Demo
+            </Link>
+            <Link href="/app/dashboard" className="text-gray-600 hover:text-gray-900">
+              Dashboard
+            </Link>
+          </div>
         </div>
       </nav>
 
@@ -138,6 +143,23 @@ export default function UploadPage() {
                 • File size: Up to 100MB
               </li>
             </ul>
+          </div>
+
+          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-blue-900">
+                Need a reliable walkthrough?
+              </h3>
+              <p className="text-sm text-blue-800 mt-1">
+                Load the warehouse shift scenario and review the same workflow with seeded data.
+              </p>
+            </div>
+            <Link
+              href="/app/demo"
+              className="shrink-0 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 text-center transition-colors"
+            >
+              Open Demo
+            </Link>
           </div>
         </div>
       </div>

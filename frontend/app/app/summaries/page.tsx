@@ -75,6 +75,9 @@ export default function SummariesPage() {
             Safety Sentinel
           </Link>
           <div className="flex gap-4">
+            <Link href="/app/demo" className="text-gray-600 hover:text-gray-900">
+              Demo
+            </Link>
             <Link href="/app/dashboard" className="text-gray-600 hover:text-gray-900">
               Dashboard
             </Link>

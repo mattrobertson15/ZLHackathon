@@ -7,3 +7,13 @@ python-dotenv==1.0.0
 opencv-python-headless==4.10.0.84
 requests==2.31.0
 inference-sdk==0.20.0
+
+# Stub packages: inference-sdk unconditionally requires `supervision` (which
+# pulls in matplotlib + scipy, ~125MB) and `opencv-python` (the GUI/Qt build,
+# which can fail to import on minimal Linux runtimes missing libGL). Neither
+# is actually exercised by the single-image `client.infer()` call path we use
+# (verified by reading inference_sdk's source). These stubs satisfy pip's
+# dependency resolution so the real heavy/GUI packages are never installed.
+# See ARCHITECTURE.md#vision-inference-layer.
+./vendor/supervision_stub
+./vendor/opencv_python_stub

@@ -76,9 +76,14 @@ export default function ResultsPage({ params }: { params: Promise<{ uploadId: st
           <Link href="/app/dashboard" className="text-2xl font-bold text-gray-900">
             Safety Sentinel
           </Link>
-          <Link href="/app/dashboard" className="text-gray-600 hover:text-gray-900">
-            Back to Dashboard
-          </Link>
+          <div className="flex gap-4">
+            <Link href="/app/demo" className="text-gray-600 hover:text-gray-900">
+              Demo
+            </Link>
+            <Link href="/app/dashboard" className="text-gray-600 hover:text-gray-900">
+              Dashboard
+            </Link>
+          </div>
         </div>
       </nav>
 

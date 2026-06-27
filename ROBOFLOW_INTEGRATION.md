@@ -123,7 +123,7 @@ Roboflow API Response
 
 ```bash
 # In .env or .env.local
-ROBOFLOW_API_KEY=3d62oyOnGVk16jziACz3
+ROBOFLOW_API_KEY=your_key_here
 ```
 
 ### Installation

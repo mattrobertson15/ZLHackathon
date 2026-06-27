@@ -60,6 +60,8 @@ Suggested Pages
   View annotated results and generated safety events
 /dashboard
   Compliance metrics, trends, and violation breakdowns
+/demo
+  Guided hackathon demo scenario loader and walkthrough links
 /events
   Safety event log
 /alerts
@@ -77,6 +79,7 @@ Frontend Responsibilities
 * Display mock alerts
 * Request AI summaries
 * Visualize trends using Recharts
+* Load the built-in warehouse shift demo scenario for reliable product walkthroughs
 
 2. FastAPI Backend
 
@@ -95,6 +98,7 @@ Backend Responsibilities
 * Return dashboard metrics
 * Generate summary prompts for Claude
 * Store generated summaries
+* Seed repeatable demo data through the admin demo-scenario endpoint
 
 3. Vision Inference Layer
 
@@ -320,7 +324,26 @@ exposed via `GET /analytics/overview` and `GET /analytics/trends`.
 * Both reuse `list_safety_events_since` (`app/db/repositories.py`) for the
   underlying date-range query.
 
-9. Claude Summary Generator
+9. Demo Scenario Loader
+
+The demo loader provides a repeatable product walkthrough path without requiring
+live model inference during judging or stakeholder demos.
+
+Implemented as `POST /admin/demo-scenario` in `app/routes/admin.py`, the loader
+seeds:
+
+* 3 processed uploads using bundled sample worksite images
+* 9 normalized detection results with `source: "manual_mock"`
+* 6 safety events across violations, positive observations, and manual review
+* 4 mock alerts covering supervisor review, coaching reminder, and manual review
+
+The endpoint is idempotent for the built-in scenario. Re-running it deletes and
+recreates records for the demo upload IDs only, so unrelated uploads and
+incidents are preserved. The frontend exposes this workflow at `/app/demo` and
+links from Upload for users who want a reliable walkthrough instead of a live
+ingestion run.
+
+10. Claude Summary Generator
 
 The summary generator converts event and analytics data into readable safety reports.
 
@@ -410,6 +433,8 @@ frontend/
       [uploadId]/
         page.tsx
     dashboard/
+      page.tsx
+    demo/
       page.tsx
     events/
       page.tsx
@@ -513,6 +538,18 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 Note: API keys can be omitted individually. The system will use the first available
 inference backend. Roboflow requires an API key to `serverless.roboflow.com` for the
 personal-protective-equipment-combined-model/8.
+
+`inference-sdk` (the Roboflow client) unconditionally depends on `supervision`
+(pulls in matplotlib + scipy, ~125MB installed) and `opencv-python` (the GUI/Qt
+build, which can fail to import on minimal Linux runtimes missing `libGL`),
+even though this project only calls `client.infer()` with a single image path —
+a code path that never touches either package's actual functionality. Vercel's
+Python function has a 500MB size cap, and the real dependency tree blew past it.
+`backend/vendor/supervision_stub` and `backend/vendor/opencv_python_stub` are
+minimal local packages that satisfy pip's dependency resolution for those two
+names without installing the real heavy/GUI packages; `opencv-python-headless`
+(already a direct dependency) remains the sole real provider of `cv2`. See
+`backend/requirements.txt` for how they're wired in.
 
 Vercel deployment uses the root `vercel.json` services config:
 

@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: supervision
+Version: 0.20.0
+Summary: Stub satisfying inference-sdk's `supervision` import without pulling in matplotlib/scipy
+Requires-Python: >=3.8

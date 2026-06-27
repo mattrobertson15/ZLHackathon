@@ -354,6 +354,41 @@ Response
   }
 }
 
+Demo Scenario
+
+POST /admin/demo-scenario
+
+Load a repeatable warehouse shift demo into the same tables used by real uploads,
+detections, safety events, alerts, and analytics. This endpoint is intended for
+hackathon walkthrough reliability. It replaces prior records for the built-in
+demo upload IDs, but does not clear unrelated user-created data.
+
+Response
+
+{
+  "status": "success",
+  "scenario": "warehouse_shift_review",
+  "message": "Warehouse shift demo scenario loaded.",
+  "uploads": [
+    {
+      "id": "demo_loading_dock",
+      "fileName": "Loading Dock PPE Review.jpg",
+      "fileType": "image",
+      "fileUrl": "/media/002823.jpg",
+      "locationLabel": "Loading Dock",
+      "notes": "Demo scenario: morning inbound freight with missing helmet and vest observations.",
+      "uploadedAt": "2026-06-27T14:30:00Z",
+      "status": "processed"
+    }
+  ],
+  "counts": {
+    "uploads": 3,
+    "detections": 9,
+    "events": 6,
+    "alerts": 4
+  }
+}
+
 Analytics
 
 GET /analytics/overview
@@ -518,6 +553,7 @@ Build endpoints in this order:
 8. GET /alerts
 9. POST /summaries/generate
 10. GET /summaries
+11. POST /admin/demo-scenario
 
 Error Response Format
 

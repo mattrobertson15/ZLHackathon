@@ -28,7 +28,26 @@ The goal is not employee surveillance. The goal is operations intelligence and p
 
 Demo Flow
 
-Step 1: Open the Dashboard
+Step 1: Load the Demo Scenario
+
+Start on the Demo page.
+
+Click "Load Demo Scenario" to seed the warehouse shift scenario.
+
+Show:
+
+* Three processed uploads
+* Generated PPE detections
+* Safety events across violations, positive observations, and manual review
+* Mock alerts for supervisor review, coaching reminders, and manual review
+
+Suggested narration:
+
+For demo reliability, Safety Sentinel includes a repeatable warehouse shift scenario.
+It uses the same upload, detection, event, alert, and analytics tables as the live
+ingestion workflow, so the rest of the product behaves exactly like a real run.
+
+Step 2: Open the Dashboard
 
 Start on the Safety Sentinel dashboard.
 
@@ -45,7 +64,7 @@ Suggested narration:
 
 This is the operations dashboard. Safety Sentinel gives supervisors a live view of safety performance based on visual observations from uploaded images and videos. Instead of manually reviewing footage or waiting for incident reports, teams can see compliance trends, violation types, and coaching opportunities.
 
-Step 2: Upload an Image or Video
+Step 3: Upload an Image or Video
 
 Navigate to the upload page.
 
@@ -55,7 +74,7 @@ Suggested narration:
 
 For the MVP, we start with uploaded images and videos rather than live camera feeds. A supervisor can upload a clip from a worksite, a warehouse floor, or an inspection review.
 
-Step 3: Run PPE Analysis
+Step 4: Run PPE Analysis
 
 Click the analyze button.
 
@@ -65,7 +84,7 @@ Suggested narration:
 
 The backend sends the image or sampled video frames to a vision model. The model looks for people, helmets, missing helmets, safety vests, and missing vests.
 
-Step 4: Show Detection Results
+Step 5: Show Detection Results
 
 Navigate to the results page.
 
@@ -83,7 +102,7 @@ Suggested narration:
 
 The model output is normalized into detection results. These detections are then passed through a safety rule engine. For example, if a person is detected without a visible helmet, the system creates a high-severity PPE violation. If a vest is missing, it creates a medium-severity violation.
 
-Step 5: Show Generated Safety Events
+Step 6: Show Generated Safety Events
 
 Scroll or navigate to the event log.
 
@@ -108,7 +127,7 @@ Suggested narration:
 
 The important part is that Safety Sentinel does not stop at object detection. It converts model outputs into structured safety events that can be tracked over time. This creates an operational data layer for safety teams.
 
-Step 6: Show Mock Alert Center
+Step 7: Show Mock Alert Center
 
 Navigate to the alerts page.
 
@@ -129,7 +148,7 @@ Coaching reminder recommended
 Uncertain PPE Status
 Manual review recommended
 
-Step 7: Show Analytics
+Step 8: Show Analytics
 
 Return to dashboard or analytics page.
 
@@ -144,7 +163,7 @@ Suggested narration:
 
 Over time, each detection becomes part of a larger safety intelligence picture. Operations leaders can see whether compliance is improving, which PPE issues are most common, and whether interventions are working.
 
-Step 8: Generate AI Safety Summary
+Step 9: Generate AI Safety Summary
 
 Navigate to the summaries page.
 
@@ -222,12 +241,13 @@ For demo reliability, this sample uses pre-seeded model outputs in the same form
 Ideal Demo Timing
 
 0:00 - 0:30  Problem and pitch
-0:30 - 1:00  Dashboard overview
-1:00 - 1:45  Upload image/video
-1:45 - 2:30  PPE analysis results
-2:30 - 3:15  Safety event log
-3:15 - 4:00  Alert center
-4:00 - 4:45  Analytics dashboard
+0:30 - 0:55  Load Demo scenario
+0:55 - 1:25  Dashboard overview
+1:25 - 2:05  Upload image/video or open seeded result
+2:05 - 2:45  PPE analysis results
+2:45 - 3:25  Safety event log
+3:25 - 4:05  Alert center
+4:05 - 4:45  Analytics dashboard
 4:45 - 5:30  AI safety summary
 5:30 - 6:00  Closing value proposition
 

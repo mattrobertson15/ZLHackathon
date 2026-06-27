@@ -8,6 +8,7 @@ import {
   SafetySummary,
   AnalyzeResponse,
 } from "./types";
+import type { DemoScenarioResponse } from "./types";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -211,6 +212,12 @@ export async function getSummary(summaryId: string): Promise<SafetySummary> {
 // Admin API
 export async function resetIncidents(): Promise<{ status: string; message: string }> {
   return apiCall<{ status: string; message: string }>("/admin/reset", {
+    method: "POST",
+  });
+}
+
+export async function loadDemoScenario(): Promise<DemoScenarioResponse> {
+  return apiCall<DemoScenarioResponse>("/admin/demo-scenario", {
     method: "POST",
   });
 }

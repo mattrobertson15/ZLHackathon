@@ -83,6 +83,9 @@ export default function Dashboard() {
         <div className="max-w-6xl mx-auto px-8 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900">Safety Sentinel</h1>
           <div className="flex gap-4">
+            <Link href="/app/demo" className="text-gray-600 hover:text-gray-900">
+              Demo
+            </Link>
             <Link href="/app/upload" className="text-gray-600 hover:text-gray-900">
               Upload
             </Link>

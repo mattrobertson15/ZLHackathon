@@ -23,6 +23,8 @@ export interface Upload {
   fileName: string;
   fileType: "image" | "video";
   fileUrl: string;
+  locationLabel?: string | null;
+  notes?: string | null;
   uploadedAt: string;
   status: "uploaded" | "processing" | "processed" | "failed";
 }
@@ -106,4 +108,17 @@ export interface AnalyzeResponse {
   detections: Detection[];
   events: SafetyEvent[];
   alerts: AlertRecord[];
+}
+
+export interface DemoScenarioResponse {
+  status: string;
+  scenario: string;
+  message: string;
+  uploads: Upload[];
+  counts: {
+    uploads: number;
+    detections: number;
+    events: number;
+    alerts: number;
+  };
 }
