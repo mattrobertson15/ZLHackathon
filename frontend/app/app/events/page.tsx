@@ -15,6 +15,8 @@ export default function EventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<SafetyEvent | null>(null);
   const [updatingEventId, setUpdatingEventId] = useState<string | null>(null);
   const [detailNote, setDetailNote] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkWorking, setBulkWorking] = useState(false);
 
   const fetchEvents = async (
     status?: string,
@@ -66,6 +68,40 @@ export default function EventsPage() {
       setError(err instanceof Error ? err.message : "Failed to update event");
     } finally {
       setUpdatingEventId(null);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const openEvents = events.filter((e) => e.status === "open");
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === openEvents.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(openEvents.map((e) => e.id)));
+    }
+  };
+
+  const handleBulkAction = async (status: EventStatus) => {
+    if (selectedIds.size === 0) return;
+    setBulkWorking(true);
+    try {
+      await Promise.all(
+        [...selectedIds].map((id) => updateEvent(id, status))
+      );
+      setSelectedIds(new Set());
+      await fetchEvents(statusFilter, severityFilter, eventTypeFilter);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Bulk update failed");
+    } finally {
+      setBulkWorking(false);
     }
   };
 
@@ -157,6 +193,37 @@ export default function EventsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
+            {openEvents.length > 0 && (
+              <div className="flex items-center gap-3 mb-3 bg-white rounded-lg shadow px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.size === openEvents.length && openEvents.length > 0}
+                  onChange={handleSelectAll}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm text-gray-600">
+                  {selectedIds.size > 0 ? `${selectedIds.size} selected` : `Select open events`}
+                </span>
+                {selectedIds.size > 0 && (
+                  <div className="flex gap-2 ml-auto">
+                    <button
+                      onClick={() => handleBulkAction("reviewed")}
+                      disabled={bulkWorking}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                    >
+                      Mark Reviewed
+                    </button>
+                    <button
+                      onClick={() => handleBulkAction("dismissed")}
+                      disabled={bulkWorking}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             {loading ? (
               <div className="bg-white rounded-lg shadow p-8 text-center text-gray-600">
                 Loading events...
@@ -170,6 +237,8 @@ export default function EventsPage() {
                 }}
                 onStatusUpdate={handleStatusUpdate}
                 updatingEventId={updatingEventId}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
               />
             )}
           </div>

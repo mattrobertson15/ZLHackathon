@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getUploadResults, resolveMediaUrl } from "@/lib/api";
-import { Upload, Detection, SafetyEvent, AlertRecord } from "@/lib/types";
+import { Upload, Detection, SafetyEvent, AlertRecord, ModelComparison } from "@/lib/types";
 import BoundingBoxOverlay from "@/components/BoundingBoxOverlay";
 import StatCard from "@/components/StatCard";
 import EventTable from "@/components/EventTable";
 import AlertCard from "@/components/AlertCard";
+import ModelComparisonPanel from "@/components/ModelComparisonPanel";
+import { analyzeUpload } from "@/lib/api";
 
 function groupByFrame(detections: Detection[]): Array<{
   frameTimestamp: number | null;
@@ -35,6 +37,9 @@ export default function ResultsPage({ params }: { params: Promise<{ uploadId: st
   const [alerts, setAlerts] = useState<AlertRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [comparison, setComparison] = useState<ModelComparison | null>(null);
+  const [comparing, setComparing] = useState(false);
+  const [compareError, setCompareError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadParams() {
@@ -63,6 +68,21 @@ export default function ResultsPage({ params }: { params: Promise<{ uploadId: st
 
     fetchData();
   }, [uploadId]);
+
+  async function handleCompare() {
+    if (!uploadId) return;
+    setComparing(true);
+    setCompareError(null);
+    try {
+      const result = await analyzeUpload(uploadId, false, false, "compare");
+      setComparison(result.comparison ?? null);
+      if (!result.comparison) setCompareError("No comparison data returned.");
+    } catch (err) {
+      setCompareError(err instanceof Error ? err.message : "Comparison failed");
+    } finally {
+      setComparing(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -171,6 +191,29 @@ export default function ResultsPage({ params }: { params: Promise<{ uploadId: st
               </div>
             )}
           </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">Model Comparison</h2>
+          <button
+            onClick={handleCompare}
+            disabled={comparing}
+            className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          >
+            {comparing ? "Running comparison..." : comparison ? "Re-run Comparison" : "Compare Roboflow vs Qwen"}
+          </button>
+        </div>
+        {compareError && (
+          <div className="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">{compareError}</div>
+        )}
+        {comparison ? (
+          <ModelComparisonPanel comparison={comparison} />
+        ) : (
+          <p className="text-sm text-gray-500">
+            Run side-by-side inference with Roboflow and Qwen Vision to compare model agreement on this upload.
+          </p>
         )}
       </div>
 

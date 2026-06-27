@@ -180,9 +180,14 @@ function CameraCard({
             Remove
           </button>
         </div>
-        <Link href="/app/events" className="text-xs text-blue-600 hover:underline">
-          View events on the Events page →
-        </Link>
+        <div className="flex gap-3">
+          <Link href={`/app/cameras/${camera.id}`} className="text-xs text-indigo-600 hover:underline font-medium">
+            View camera analytics →
+          </Link>
+          <Link href="/app/events" className="text-xs text-blue-600 hover:underline">
+            All events →
+          </Link>
+        </div>
       </div>
     </div>
   );

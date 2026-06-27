@@ -187,6 +187,18 @@ export async function listZones(): Promise<Zone[]> {
   return data.zones;
 }
 
+export async function createZone(params: {
+  displayName: string;
+  requiredPpe: string[];
+  severityOverrides: Record<string, string>;
+}): Promise<Zone> {
+  const data = await apiCall<{ zone: Zone }>("/zones", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+  return data.zone;
+}
+
 // Analytics API
 export async function getAnalyticsOverview(
   period = "weekly"

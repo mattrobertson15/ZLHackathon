@@ -38,24 +38,28 @@ def _apply_migrations():
     """Add columns that may be missing from databases created before these fields existed."""
     from sqlalchemy import text
 
+    # SQLite < 3.35 doesn't support IF NOT EXISTS on ALTER TABLE, so we catch
+    # the duplicate-column error and continue instead.
     new_columns = [
-        "ALTER TABLE uploads ADD COLUMN IF NOT EXISTS zone_id VARCHAR",
-        "ALTER TABLE uploads ADD COLUMN IF NOT EXISTS camera_id VARCHAR",
-        "ALTER TABLE uploads ADD COLUMN IF NOT EXISTS source_type TEXT DEFAULT 'upload'",
-        "ALTER TABLE detection_results ADD COLUMN IF NOT EXISTS frame_url TEXT",
-        "ALTER TABLE safety_events ADD COLUMN IF NOT EXISTS status_updated_at TIMESTAMP",
-        "ALTER TABLE safety_events ADD COLUMN IF NOT EXISTS review_note TEXT",
-        # Live RTSP feed columns on the cameras table.
-        "ALTER TABLE cameras ADD COLUMN IF NOT EXISTS rtsp_url VARCHAR",
-        "ALTER TABLE cameras ADD COLUMN IF NOT EXISTS stream_status TEXT DEFAULT 'offline'",
-        "ALTER TABLE cameras ADD COLUMN IF NOT EXISTS monitoring BOOLEAN DEFAULT FALSE",
-        "ALTER TABLE cameras ADD COLUMN IF NOT EXISTS capture_interval_seconds INTEGER DEFAULT 15",
-        "ALTER TABLE cameras ADD COLUMN IF NOT EXISTS last_capture_at TIMESTAMP",
-        "ALTER TABLE cameras ADD COLUMN IF NOT EXISTS last_error VARCHAR",
+        "ALTER TABLE uploads ADD COLUMN zone_id VARCHAR",
+        "ALTER TABLE uploads ADD COLUMN camera_id VARCHAR",
+        "ALTER TABLE uploads ADD COLUMN source_type TEXT DEFAULT 'upload'",
+        "ALTER TABLE detection_results ADD COLUMN frame_url TEXT",
+        "ALTER TABLE safety_events ADD COLUMN status_updated_at TIMESTAMP",
+        "ALTER TABLE safety_events ADD COLUMN review_note TEXT",
+        "ALTER TABLE cameras ADD COLUMN rtsp_url VARCHAR",
+        "ALTER TABLE cameras ADD COLUMN stream_status TEXT DEFAULT 'offline'",
+        "ALTER TABLE cameras ADD COLUMN monitoring BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE cameras ADD COLUMN capture_interval_seconds INTEGER DEFAULT 15",
+        "ALTER TABLE cameras ADD COLUMN last_capture_at TIMESTAMP",
+        "ALTER TABLE cameras ADD COLUMN last_error VARCHAR",
     ]
     with engine.connect() as conn:
         for stmt in new_columns:
-            conn.execute(text(stmt))
+            try:
+                conn.execute(text(stmt))
+            except Exception:
+                pass  # column already exists
         conn.commit()
 
 

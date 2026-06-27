@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -20,9 +22,17 @@ from app.services import camera_monitor
 
 app = FastAPI(title="Safety Sentinel API")
 
+_cors_origins = [
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "https://safety-sentinel-api.fly.dev",
+]
+if os.getenv("FRONTEND_URL"):
+    _cors_origins.append(os.getenv("FRONTEND_URL"))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8000"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
