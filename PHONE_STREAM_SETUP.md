@@ -48,6 +48,28 @@ Larix Broadcaster is a free push-RTMP app. Connection kept failing:
 
 Larix connection string format it expects: `rtmp://server/application/streamkey`
 
+## Running Fully Locally (no Fly)
+
+If you run the backend via `docker compose` on your laptop, **do not** point the
+phone at `safety-sentinel-relay.fly.dev` — that's the cloud relay. The local
+backend reads the *local* mediamtx, so the phone must push to the *local* relay:
+
+1. Make sure mediamtx publishes RTMP locally. `docker-compose.yml` now exposes
+   `1935:1935` for this (the bundled ffmpeg emulator didn't need it).
+2. Find your laptop's LAN IP: `ipconfig getifaddr en0` (macOS) or
+   `ip -4 addr show | grep inet` (Linux). Phone must be on the **same Wi-Fi**.
+3. Streamlabs / Larix push URL: `rtmp://<your-laptop-LAN-ip>:1935/phone-demo`
+4. Camera RTSP URL in the Safety Sentinel UI (backend is in Docker):
+   `rtsp://mediamtx:8554/phone-demo` — **not** the prefilled
+   `rtsp://safety-sentinel-relay.internal:8554/phone-demo` (that `.internal`
+   name only resolves inside Fly).
+5. Confirm the push landed before debugging the read:
+   `curl -s http://localhost:9997/v3/paths/list | python3 -m json.tool`
+   (the in-app `GET /cameras/relay-streams` only works on Fly).
+
+Common "worked earlier, now not catching": your laptop's LAN IP changed, so the
+phone is pushing to a stale address. Re-check the IP and update the push URL.
+
 ## Alternative Push Options to Try
 
 ### 1. ffmpeg on a laptop (easiest to debug)
