@@ -61,9 +61,20 @@ build_clip() {
   rm -f "$list"
 }
 
-# Split the available stills across the two zone-specific feeds (round-robin so
-# each gets a different mix). The floor feed shows the full set. Falls back to
-# the full set if there are too few images to split.
+# Echo the images in a per-zone source folder (emulator/media/sources/<zone>/),
+# if any. Drop zone-specific stills there to theme a feed — e.g. dock workers
+# missing hi-vis vests under sources/loading-dock/. Empty folder -> no output.
+zone_images() {
+  local dir="$SOURCES_DIR/$1"
+  shopt -s nullglob
+  local found=("$dir"/*.jpg "$dir"/*.jpeg "$dir"/*.png)
+  printf '%s\n' "${found[@]}"
+}
+
+SOURCES_DIR="$MEDIA_DIR/sources"
+
+# Fallback split of the shared uploads/ stills across the two zone feeds
+# (round-robin so each gets a different mix), used when a zone folder is empty.
 dock_imgs=()
 weld_imgs=()
 idx=0
@@ -78,10 +89,21 @@ done
 [ ${#dock_imgs[@]} -eq 0 ] && dock_imgs=("${images[@]}")
 [ ${#weld_imgs[@]} -eq 0 ] && weld_imgs=("${images[@]}")
 
-build_clip "$MEDIA_DIR/demo-worksite.mp4" "${images[@]}"
-build_clip "$MEDIA_DIR/loading-dock.mp4" "${dock_imgs[@]}"
-build_clip "$MEDIA_DIR/welding-bay.mp4" "${weld_imgs[@]}"
+# Each feed: prefer its zone source folder; fall back to the shared stills.
+# (output clip, zone source folder, fallback image list)
+mapfile -t floor_zone < <(zone_images floor-entry)
+mapfile -t dock_zone  < <(zone_images loading-dock)
+mapfile -t weld_zone  < <(zone_images welding-bay)
+
+floor_src=("${images[@]}");    [ ${#floor_zone[@]} -gt 0 ] && floor_src=("${floor_zone[@]}")
+dock_src=("${dock_imgs[@]}");  [ ${#dock_zone[@]}  -gt 0 ] && dock_src=("${dock_zone[@]}")
+weld_src=("${weld_imgs[@]}");  [ ${#weld_zone[@]}  -gt 0 ] && weld_src=("${weld_zone[@]}")
+
+build_clip "$MEDIA_DIR/demo-worksite.mp4" "${floor_src[@]}"
+build_clip "$MEDIA_DIR/loading-dock.mp4" "${dock_src[@]}"
+build_clip "$MEDIA_DIR/welding-bay.mp4" "${weld_src[@]}"
 
 echo "Done. Clips written to $MEDIA_DIR:"
 echo "  demo-worksite.mp4  loading-dock.mp4  welding-bay.mp4"
+echo "Tip: drop zone-specific stills in emulator/media/sources/<zone>/ to theme a feed."
 echo "Now run: docker compose up --build"

@@ -29,6 +29,11 @@ shows the same footage producing *different* events under each zone's PPE policy
 URLs and (with `SEED_CAMERA_MONITORING=true`, set in compose) **start monitoring
 automatically** — no manual registration needed.
 
+To theme a feed with your own stills, drop images into the matching
+`media/sources/<zone>/` folder (`floor-entry`, `loading-dock`, `welding-bay`) and
+rebuild — see [media/sources/README.md](media/sources/README.md). Empty folders
+fall back to the shared `uploads/` stills, so this is entirely optional.
+
 ## Quick start
 
 ```bash
