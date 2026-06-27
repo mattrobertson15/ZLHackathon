@@ -2,7 +2,8 @@
 
 ## Overview
 
-The Roboflow personal-protective-equipment-combined-model/8 has been successfully integrated into Safety Sentinel as a fallback inference backend for PPE detection.
+The Roboflow personal-protective-equipment-combined-model/8 is integrated into
+Safety Sentinel as the preferred object-detection backend for PPE detection.
 
 ## What Was Integrated
 
@@ -18,22 +19,25 @@ The Roboflow personal-protective-equipment-combined-model/8 has been successfull
 
 1. **`backend/app/services/roboflow_service.py`** (126 lines)
    - `run_roboflow_inference(frames)` - Main entry point
+   - Direct hosted REST API call via `requests`
    - Class mapping from Roboflow format to standard labels
    - BBox parsing and normalization
-   - Handles URLs and local file paths
+   - Handles local image/frame file paths
 
 ### Modified Files
 
 1. **`backend/requirements.txt`**
-   - Added: `inference-sdk==0.20.0`
+   - Uses `requests` for Roboflow REST calls
+   - Keeps `opencv-python-headless` for video frame extraction
+   - Does not use `inference-sdk` or local `./vendor/...` path dependencies
 
 2. **`backend/app/config.py`**
    - Added: `ROBOFLOW_API_KEY` configuration
 
 3. **`backend/app/services/vision_service.py`**
    - Updated inference priority chain:
-     1. Qwen Vision (if available)
-     2. Roboflow (if available) ← NEW
+     1. Roboflow (if available)
+     2. Qwen Vision (if available)
      3. Mock generator (fallback)
 
 4. **`ARCHITECTURE.md`**
@@ -60,16 +64,16 @@ Frontend /analyze request
         │
         └─> Vision Service: run_inference(frames)
             │
-            ├─ Try Qwen Vision (if QWEN_API_KEY set)
-            │   └─ Success? Return source="qwen_vision"
-            │
-            ├─ Try Roboflow (if ROBOFLOW_API_KEY set) ← NEW
+            ├─ Try Roboflow (if ROBOFLOW_API_KEY set)
             │   │
-            │   ├─ Create InferenceHTTPClient
-            │   ├─ Call serverless.roboflow.com
+            │   ├─ Base64 encode the image/frame
+            │   ├─ POST to serverless.roboflow.com
             │   ├─ Get predictions with class, confidence, bbox
             │   ├─ Map classes: "NO-Safety Vest" → "no_vest"
             │   └─ Return source="roboflow"
+            │
+            ├─ Try Qwen Vision (if QWEN_API_KEY and QWEN_BASE_URL set)
+            │   └─ Success? Return source="qwen_vision"
             │
             └─ Fall back to mock generator
                 └─ Return source="manual_mock"
@@ -133,6 +137,11 @@ Dependencies are already installed in `requirements.txt`:
 ```bash
 pip install -r backend/requirements.txt
 ```
+
+Vercel note: keep backend dependencies as registry packages in
+`backend/requirements.txt`. Do not add local path dependencies such as
+`./vendor/supervision_stub`; Vercel's Python builder runs `uv lock` from the
+backend service root and can resolve those paths incorrectly.
 
 ## Testing
 
