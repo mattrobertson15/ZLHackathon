@@ -18,4 +18,5 @@ class DetectionResult(Base):
     bbox_height = Column(Integer, nullable=True)
     source = Column(String, nullable=False)
     # qwen_vision | roboflow | manual_mock
+    frame_url = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False)

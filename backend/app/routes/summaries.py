@@ -20,7 +20,7 @@ class GenerateSummaryRequest(BaseModel):
 def create_summary(request: GenerateSummaryRequest, db: Session = Depends(get_db)):
     try:
         summary = generate_summary(db, request.period, request.startDate, request.endDate)
-        return {"summary": summary}
+        return summary
     except ValueError as e:
         raise HTTPException(status_code=500, detail={"error": {"code": "CONFIG_ERROR", "message": str(e)}})
     except Exception as e:
@@ -40,4 +40,4 @@ def fetch_summary(summary_id: str, db: Session = Depends(get_db)):
     summary = get_summary_by_id(db, summary_id)
     if not summary:
         raise HTTPException(status_code=404, detail={"error": {"code": "NOT_FOUND", "message": "Summary not found"}})
-    return {"summary": summary}
+    return summary
