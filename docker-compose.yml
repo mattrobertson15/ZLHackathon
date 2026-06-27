@@ -31,8 +31,8 @@ services:
   # One ffmpeg service per emulated camera feed. Each loops its own clip into a
   # distinct mediamtx path; the seeded cameras (cam-01/02/03) attach to these.
   # Build the clips first with ./emulator/make-sample-video.sh.
-  # -re paces at realtime; -stream_loop -1 loops forever. Re-encode to H.264 so
-  # the RTSP output is broadly decodable regardless of source codec.
+  # -re paces at realtime; -stream_loop -1 loops forever. -c:v copy passes the
+  # stream through without re-encoding — near-zero CPU. Requires H.264 source.
   ffmpeg:
     image: jrottenberg/ffmpeg:6.1-ubuntu
     restart: unless-stopped
@@ -42,8 +42,7 @@ services:
       - ./emulator/media:/media:ro
     command: >
       -re -stream_loop -1 -i /media/demo-worksite.mp4
-      -c:v libx264 -preset veryfast -tune zerolatency -pix_fmt yuv420p
-      -an -f rtsp -rtsp_transport tcp
+      -c:v copy -an -f rtsp -rtsp_transport tcp
       rtsp://mediamtx:8554/worksite-demo
     networks:
       - sentinel
@@ -57,8 +56,7 @@ services:
       - ./emulator/media:/media:ro
     command: >
       -re -stream_loop -1 -i /media/loading-dock.mp4
-      -c:v libx264 -preset veryfast -tune zerolatency -pix_fmt yuv420p
-      -an -f rtsp -rtsp_transport tcp
+      -c:v copy -an -f rtsp -rtsp_transport tcp
       rtsp://mediamtx:8554/loading-dock
     networks:
       - sentinel
@@ -72,8 +70,7 @@ services:
       - ./emulator/media:/media:ro
     command: >
       -re -stream_loop -1 -i /media/welding-bay.mp4
-      -c:v libx264 -preset veryfast -tune zerolatency -pix_fmt yuv420p
-      -an -f rtsp -rtsp_transport tcp
+      -c:v copy -an -f rtsp -rtsp_transport tcp
       rtsp://mediamtx:8554/welding-bay
     networks:
       - sentinel
