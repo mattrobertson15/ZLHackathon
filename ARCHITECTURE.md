@@ -130,6 +130,20 @@ If Qwen Vision is not reliable enough for bounding boxes or class-level PPE dete
     * YOLO/Roboflow for detection
     * Qwen Vision for image-level interpretation and explanation
 
+Current Implementation Status
+
+`app/services/vision_service.py` implements `run_inference(frames)`, which is the
+single entry point the `/uploads/{upload_id}/analyze` endpoint calls. Today it
+always routes to `_generate_mock_detections`, a deterministic-per-frame mock
+generator that produces realistic person/PPE detection mixes for demo purposes.
+
+The real Qwen3-VL30B client (`_call_qwen_vision`) is a deferred stub that raises
+`NotImplementedError`. Wiring it up requires `QWEN_API_KEY` plus a verified
+request/response contract for the model — tracked as Phase 3.5 in todo.md. Once
+implemented, `run_inference` will call it first when `QWEN_API_KEY` is set and
+fall back to the mock generator if the call fails, preserving the existing
+"mock fallback for demo reliability" behavior.
+
 4. Detection Parser
 
 The detection parser converts raw model outputs into a normalized internal format.
@@ -219,6 +233,23 @@ type AlertRecord = {
   createdAt: string;
 };
 
+Implemented in `app/services/alert_service.py` (`generate_alerts`), called from
+`POST /uploads/{upload_id}/analyze` right after the rule engine creates safety
+events. Routing rule:
+
+* `positive_observation` events never generate an alert (nothing to act on).
+* `confidence < 0.75` (`LOW_CONFIDENCE_THRESHOLD`), or `eventType ==
+  "uncertain_review"`, → `manual_review`, regardless of severity — a human
+  should confirm the underlying detection before anyone acts on it.
+* Otherwise `severity == "high"` → `supervisor_review`.
+* Otherwise `severity == "medium"` → `coaching_reminder`.
+* Any remaining case (e.g. a non-positive low-severity event) falls back to
+  `manual_review`.
+
+Alerts are stored in the `alert_records` table and exposed via `GET /alerts`
+(filterable by `status`/`alertType`) and `PATCH /alerts/{alert_id}` for mock
+status transitions. See [API.md#alerts](API.md) for the full spec.
+
 Alert Philosophy
 
 * Supervisor review is the default path.
@@ -303,33 +334,33 @@ Claude should produce:
 * Recommended corrective actions
 * Coaching-oriented safety reminders
 
-Suggested Backend Folder Structure
+Backend Folder Structure
 
 backend/
   app/
     main.py
     config.py
     routes/
-      uploads.py
-      inference.py
-      events.py
-      analytics.py
-      alerts.py
-      summaries.py
+      uploads.py        [done]
+      inference.py       [done — analyze + detections]
+      events.py          [done]
+      analytics.py        [pending: Phase 6]
+      alerts.py           [done]
+      summaries.py        [pending: Phase 7]
     services/
-      media_service.py
-      vision_service.py
-      detection_parser.py
-      rule_engine.py
-      analytics_service.py
-      alert_service.py
-      summary_service.py
+      vision_service.py   [done — mock detector; Qwen client deferred to Phase 3.5]
+      detection_parser.py [done]
+      rule_engine.py       [done]
+      media_service.py     [pending: not yet broken out, frame extraction lives in utils/video_frames.py]
+      analytics_service.py [pending: Phase 6]
+      alert_service.py     [done]
+      summary_service.py   [pending: Phase 7]
     models/
-      upload.py
-      detection_result.py
-      safety_event.py
-      alert_record.py
-      safety_summary.py
+      upload.py          [done]
+      detection_result.py [done]
+      safety_event.py     [done]
+      alert_record.py      [done]
+      safety_summary.py    [pending: Phase 7]
     db/
       database.py
       repositories.py
@@ -409,6 +440,13 @@ Run inference on sampled frames.
 Aggregate repeated violations.
 
 This keeps inference fast and manageable.
+
+Static File Serving
+
+Uploaded files are saved to UPLOAD_STORAGE_PATH and served at /media/{fileName}.
+This is a separate path from the /uploads API resource (POST /uploads, GET
+/uploads, GET /uploads/{upload_id}) to avoid routing collisions between the
+REST resource and static file serving.
 
 Data Storage Options
 

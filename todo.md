@@ -1,51 +1,58 @@
 # Safety Sentinel — Hackathon Build Plan
 
 ## Phase 1: Foundation & Infrastructure
-- [ ] Set up FastAPI backend project structure
+- [x] Set up FastAPI backend project structure
 - [ ] Set up Next.js frontend project structure
-- [ ] Configure environment variables (.env files)
+- [x] Configure environment variables (.env files)
   - `ANTHROPIC_API_KEY` for Claude summaries
   - `QWEN_API_KEY` for vision model
   - `UPLOAD_STORAGE_PATH` for local image/video storage
-- [ ] Create SQLite database schema (uploads, detections, safety_events, alerts, summaries)
-- [ ] Set up database ORM/query layer (SQLAlchemy or similar)
-- [ ] Create base API health check endpoint (`GET /health`)
+- [x] Create SQLite database schema (uploads done; detections, safety_events, alerts, summaries pending later phases)
+- [x] Set up database ORM/query layer (SQLAlchemy or similar)
+- [x] Create base API health check endpoint (`GET /health`)
 
 ## Phase 2: Upload & Storage
-- [ ] Implement file upload handler (`POST /uploads`)
-- [ ] Store uploaded files locally (use `UPLOAD_STORAGE_PATH`)
-- [ ] Implement upload retrieval (`GET /uploads`, `GET /uploads/{upload_id}`)
-- [ ] Add video frame extraction utility (sample 1 frame per 1-2 seconds, cap at 20-30 frames)
-- [ ] Implement upload status tracking (uploaded → processing → processed → failed)
+- [x] Implement file upload handler (`POST /uploads`)
+- [x] Store uploaded files locally (use `UPLOAD_STORAGE_PATH`)
+- [x] Implement upload retrieval (`GET /uploads`, `GET /uploads/{upload_id}`)
+- [x] Add video frame extraction utility (sample 1 frame per 1-2 seconds, cap at 20-30 frames)
+- [x] Implement upload status tracking (uploaded → processing → processed → failed)
 
 ## Phase 3: Vision Inference Integration
+- [x] Create detection parser to normalize Qwen outputs (`app/services/detection_parser.py`)
+- [x] Implement inference endpoint (`POST /uploads/{upload_id}/analyze`)
+- [x] Add mock detection fallback (for demo reliability if Qwen fails) — this is the active default until Phase 3.5 lands (`app/services/vision_service.py`)
+- [x] Store raw detection results in database (`detection_results` table)
+
+## Phase 3.5: Qwen Vision Client (Deferred — needs QWEN_API_KEY)
+The rest of Phase 3 is built and wired against `_generate_mock_detections`. Pick this
+up once `QWEN_API_KEY` and the Qwen3-VL30B request/response contract are available.
 - [ ] Integrate Qwen3-VL30B API client
   - Detection targets: person, helmet, no_helmet, vest, no_vest
   - Extract: label, confidence, bounding box, frame timestamp (for video)
-- [ ] Create detection parser to normalize Qwen outputs
-- [ ] Implement inference endpoint (`POST /uploads/{upload_id}/analyze`)
-- [ ] Add mock detection fallback (for demo reliability if Qwen fails)
-- [ ] Store raw detection results in database
+- [ ] Implement `_call_qwen_vision` in `app/services/vision_service.py` (currently raises `NotImplementedError`)
+- [ ] Verify real Qwen output shape matches `RawDetection`/detection-parser expectations; adjust parser if not
+- [ ] Confirm mock-fallback-on-failure behavior still works once the real client is live
 
 ## Phase 4: Rule Engine & Safety Events
-- [ ] Implement rule engine that converts detections → safety events
+- [x] Implement rule engine that converts detections → safety events (`app/services/rule_engine.py`)
   - person + helmet → positive observation
   - person + no_helmet → high-severity violation
   - person + vest → positive observation
   - person + no_vest → medium-severity violation
   - person + unclear PPE → uncertain_review
-- [ ] Create safety event creation logic
-- [ ] Implement event retrieval (`GET /events`, `GET /events/{event_id}`)
-- [ ] Implement event status updates (`PATCH /events/{event_id}`)
+- [x] Create safety event creation logic
+- [x] Implement event retrieval (`GET /events`, `GET /events/{event_id}`)
+- [x] Implement event status updates (`PATCH /events/{event_id}`)
 
 ## Phase 5: Mock Alert Generation
-- [ ] Implement alert creation from safety events
+- [x] Implement alert creation from safety events (`app/services/alert_service.py`)
   - High severity → supervisor_review
   - Medium severity → coaching_reminder
-  - Low confidence → manual_review
-- [ ] Create alert retrieval (`GET /alerts`)
-- [ ] Implement alert status updates (`PATCH /alerts/{alert_id}`)
-- [ ] Store alerts in database
+  - Low confidence or uncertain_review → manual_review
+- [x] Create alert retrieval (`GET /alerts`)
+- [x] Implement alert status updates (`PATCH /alerts/{alert_id}`)
+- [x] Store alerts in database (`alert_records` table)
 
 ## Phase 6: Analytics
 - [ ] Calculate compliance percentage (positive_obs / total_observations * 100)
