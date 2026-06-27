@@ -127,23 +127,32 @@ def _map_roboflow_class(class_name: str) -> Optional[str]:
     # Normalize input: lowercase and replace hyphens/underscores with spaces
     name_normalized = class_name.lower().strip().replace("-", " ").replace("_", " ")
 
-    # Map common variations (note: normalized names have spaces instead of hyphens)
+    # Map common variations (note: normalized names have spaces instead of hyphens).
+    # Roboflow's personal-protective-equipment-combined-model returns class names
+    # like "NO-Hardhat" and "NO-Safety Vest" (with hyphens); after normalization
+    # those become "no hardhat" and "no safety vest".
     mapping = {
         "person": "person",
         "people": "person",
+        "worker": "person",
         "helmet": "helmet",
         "hardhat": "helmet",
         "hard hat": "helmet",
         "no helmet": "no_helmet",
+        "no hardhat": "no_helmet",       # Roboflow: "NO-Hardhat"
         "without helmet": "no_helmet",
+        "without hardhat": "no_helmet",
         "person without helmet": "no_helmet",
         "person no helmet": "no_helmet",
         "vest": "vest",
         "safety vest": "vest",
         "reflective vest": "vest",
+        "hi vis vest": "vest",
+        "high vis vest": "vest",
         "no vest": "no_vest",
-        "no safety vest": "no_vest",
+        "no safety vest": "no_vest",     # Roboflow: "NO-Safety Vest"
         "without vest": "no_vest",
+        "without safety vest": "no_vest",
         "person without vest": "no_vest",
         "person no vest": "no_vest",
     }
