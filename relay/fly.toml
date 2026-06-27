@@ -19,6 +19,16 @@ primary_region = 'sjc'
   [[services.ports]]
     port = 1935
 
+[checks]
+  [checks.mediamtx]
+    port = 9997
+    type = "http"
+    interval = "15s"
+    timeout = "5s"
+    method = "GET"
+    path = "/v3/config/global/get"
+    grace_period = "30s"
+
 [[vm]]
   memory = '256mb'
   cpu_kind = 'shared'
