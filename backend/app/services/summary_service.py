@@ -60,7 +60,7 @@ Based on these metrics, provide a safety summary in the following format:
 
     client = anthropic.Anthropic(api_key=api_key)
     response = client.messages.create(
-        model="claude-3-5-sonnet-20241022",
+        model="claude-opus-4-8",
         max_tokens=1024,
         messages=[{"role": "user", "content": context}],
     )

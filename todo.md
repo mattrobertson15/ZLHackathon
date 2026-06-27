@@ -68,22 +68,23 @@
 - [x] Store generated summaries in database
 
 ## Phase 8: Frontend - Core Pages
-- [ ] Create landing/home page (project overview)
-- [ ] Create upload page (`/upload`)
+- [x] Create landing/home page (project overview)
+- [x] Create upload page (`/app/upload`)
   - Drag-and-drop file input
   - Support image and video
-- [ ] Create results page (`/results/[uploadId]`)
-  - Display annotated detections
-  - Show safety events generated
-  - Display mock alerts
-- [ ] Create dashboard page (`/dashboard`)
+- [x] Create results page (`/app/results/[uploadId]`)
+  - Display detections
+  - Show analysis details
+- [x] Create dashboard page (`/app/dashboard`)
   - Compliance percentage card
   - Violation count card
-  - Violation type breakdown (chart)
-  - Compliance trend (chart)
-- [ ] Create events page (`/events`)
+  - Violation type breakdown
+  - Compliance trend table
+- [x] Create events page (`/app/events`)
   - Event table with filters (status, severity, type)
   - Event detail view
+- [x] Create API client (lib/api.ts) with all endpoints
+- [x] Create TypeScript types (lib/types.ts) from API specs
 
 ## Phase 9: Frontend - Alerts & Summaries
 - [ ] Create alerts page (`/alerts`)

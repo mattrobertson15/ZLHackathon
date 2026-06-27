@@ -93,11 +93,10 @@ export interface SafetySummary {
   period: string;
   startDate: string;
   endDate: string;
-  compliancePercentage: number;
-  totalViolations: number;
-  topViolationTypes: ViolationType[];
-  summaryText: string;
-  recommendedActions: string[];
+  executiveSummary: string;
+  topViolations: string;
+  trendAnalysis: string;
+  recommendedActions: string;
   createdAt: string;
 }
 

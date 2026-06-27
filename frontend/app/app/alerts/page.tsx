@@ -11,6 +11,7 @@ export default function AlertsPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [alertTypeFilter, setAlertTypeFilter] = useState<string>("");
+  const [selectedAlert, setSelectedAlert] = useState<AlertRecord | null>(null);
 
   const fetchAlerts = async (status?: string, alertType?: string) => {
     try {
@@ -39,6 +40,9 @@ export default function AlertsPage() {
       setAlerts((prev) =>
         prev.map((a) => (a.id === alertId ? { ...a, status: newStatus } : a))
       );
+      if (selectedAlert?.id === alertId) {
+        setSelectedAlert({ ...selectedAlert, status: newStatus });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update alert");
     }
@@ -47,13 +51,13 @@ export default function AlertsPage() {
   const getAlertTypeColor = (alertType: string) => {
     switch (alertType) {
       case "supervisor_review":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 text-red-800 border-l-4 border-red-500";
       case "coaching_reminder":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500";
       case "manual_review":
-        return "bg-purple-100 text-purple-800";
+        return "bg-purple-100 text-purple-800 border-l-4 border-purple-500";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-800 border-l-4 border-gray-500";
     }
   };
 
@@ -72,6 +76,26 @@ export default function AlertsPage() {
     }
   };
 
+  const getAlertTypeLabel = (alertType: string) => {
+    switch (alertType) {
+      case "supervisor_review":
+        return "Supervisor Review";
+      case "coaching_reminder":
+        return "Coaching Reminder";
+      case "manual_review":
+        return "Manual Review";
+      default:
+        return alertType;
+    }
+  };
+
+  const stats = {
+    draft: alerts.filter((a) => a.status === "draft").length,
+    queued: alerts.filter((a) => a.status === "queued").length,
+    sent_mock: alerts.filter((a) => a.status === "sent_mock").length,
+    total: alerts.length,
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       <nav className="bg-white shadow">
@@ -86,6 +110,9 @@ export default function AlertsPage() {
             <Link href="/app/events" className="text-gray-600 hover:text-gray-900">
               Events
             </Link>
+            <Link href="/app/summaries" className="text-gray-600 hover:text-gray-900">
+              Summaries
+            </Link>
           </div>
         </div>
       </nav>
@@ -99,104 +126,193 @@ export default function AlertsPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white rounded-lg shadow p-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Status
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Statuses</option>
-              <option value="draft">Draft</option>
-              <option value="queued">Queued</option>
-              <option value="sent_mock">Sent (Mock)</option>
-              <option value="dismissed">Dismissed</option>
-            </select>
+            <div className="text-2xl font-bold text-gray-900">{stats.draft}</div>
+            <div className="text-sm text-gray-600 mt-1">Draft Alerts</div>
           </div>
-
           <div className="bg-white rounded-lg shadow p-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Alert Type
-            </label>
-            <select
-              value={alertTypeFilter}
-              onChange={(e) => setAlertTypeFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Types</option>
-              <option value="supervisor_review">Supervisor Review</option>
-              <option value="coaching_reminder">Coaching Reminder</option>
-              <option value="manual_review">Manual Review</option>
-            </select>
+            <div className="text-2xl font-bold text-blue-600">{stats.queued}</div>
+            <div className="text-sm text-gray-600 mt-1">Queued</div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="text-2xl font-bold text-green-600">{stats.sent_mock}</div>
+            <div className="text-sm text-gray-600 mt-1">Sent (Mock)</div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+            <div className="text-sm text-gray-600 mt-1">Total Alerts</div>
           </div>
         </div>
 
-        {loading ? (
-          <div className="bg-white rounded-lg shadow p-8 text-center text-gray-600">
-            Loading alerts...
-          </div>
-        ) : alerts.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-8 text-center text-gray-600">
-            No alerts found
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {alerts.map((alert) => (
-              <div key={alert.id} className="bg-white rounded-lg shadow p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{alert.title}</h3>
-                    <p className="text-sm text-gray-600 mt-1">{alert.message}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <span
-                      className={`inline-block px-3 py-1 text-sm font-medium rounded-full whitespace-nowrap ${getAlertTypeColor(
-                        alert.alertType
-                      )}`}
-                    >
-                      {alert.alertType.replace(/_/g, " ")}
-                    </span>
-                    <span
-                      className={`inline-block px-3 py-1 text-sm font-medium rounded-full whitespace-nowrap ${getStatusColor(
-                        alert.status
-                      )}`}
-                    >
-                      {alert.status}
-                    </span>
-                  </div>
-                </div>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+          <div className="lg:col-span-1 bg-white rounded-lg shadow p-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Filters</h2>
 
-                <div className="flex justify-between items-center">
-                  <p className="text-xs text-gray-500">
-                    {new Date(alert.createdAt).toLocaleString()} • ID: {alert.id}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="">All Statuses</option>
+                <option value="draft">Draft</option>
+                <option value="queued">Queued</option>
+                <option value="sent_mock">Sent (Mock)</option>
+                <option value="dismissed">Dismissed</option>
+              </select>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Alert Type
+              </label>
+              <select
+                value={alertTypeFilter}
+                onChange={(e) => setAlertTypeFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="">All Types</option>
+                <option value="supervisor_review">Supervisor Review</option>
+                <option value="coaching_reminder">Coaching Reminder</option>
+                <option value="manual_review">Manual Review</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="lg:col-span-3">
+            {loading ? (
+              <div className="bg-white rounded-lg shadow p-8 text-center text-gray-600">
+                Loading alerts...
+              </div>
+            ) : alerts.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-8 text-center text-gray-600">
+                No alerts found. Check back soon!
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {alerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    onClick={() => setSelectedAlert(alert)}
+                    className={`${getAlertTypeColor(
+                      alert.alertType
+                    )} rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h3 className="font-semibold mb-1">{alert.title}</h3>
+                        <p className="text-sm opacity-90">{alert.message}</p>
+                      </div>
+                      <div className="flex gap-2 ml-4">
+                        <span
+                          className={`inline-block px-2 py-1 text-xs font-medium rounded whitespace-nowrap ${getStatusColor(
+                            alert.status
+                          )}`}
+                        >
+                          {alert.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-xs opacity-75 mt-2">
+                      {new Date(alert.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {selectedAlert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-96 overflow-y-auto">
+            <div className="sticky top-0 bg-gray-50 border-b px-6 py-4 flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-gray-900">Alert Details</h2>
+              <button
+                onClick={() => setSelectedAlert(null)}
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Title</label>
+                <p className="text-gray-900 font-semibold mt-1">{selectedAlert.title}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700">Message</label>
+                <p className="text-gray-700 mt-1">{selectedAlert.message}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Alert Type</label>
+                  <p className="text-gray-900 mt-1 text-sm">
+                    {getAlertTypeLabel(selectedAlert.alertType)}
                   </p>
-
-                  {alert.status === "draft" && (
-                    <button
-                      onClick={() => handleStatusUpdate(alert.id, "sent_mock")}
-                      className="px-3 py-1 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Mark as Sent
-                    </button>
-                  )}
-
-                  {alert.status !== "dismissed" && alert.status !== "sent_mock" && (
-                    <button
-                      onClick={() => handleStatusUpdate(alert.id, "dismissed")}
-                      className="px-3 py-1 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      Dismiss
-                    </button>
-                  )}
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Status</label>
+                  <p className="text-gray-900 mt-1 text-sm capitalize">{selectedAlert.status}</p>
                 </div>
               </div>
-            ))}
+
+              <div>
+                <label className="text-sm font-medium text-gray-700">Event ID</label>
+                <p className="text-gray-600 text-xs font-mono mt-1">{selectedAlert.safetyEventId}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700">Created</label>
+                <p className="text-gray-600 text-sm mt-1">
+                  {new Date(selectedAlert.createdAt).toLocaleString()}
+                </p>
+              </div>
+
+              <div className="border-t pt-4 space-y-2">
+                {selectedAlert.status === "draft" && (
+                  <button
+                    onClick={() => {
+                      handleStatusUpdate(selectedAlert.id, "sent_mock");
+                      setSelectedAlert(null);
+                    }}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    Mark as Sent
+                  </button>
+                )}
+
+                {selectedAlert.status !== "dismissed" && selectedAlert.status !== "sent_mock" && (
+                  <button
+                    onClick={() => {
+                      handleStatusUpdate(selectedAlert.id, "dismissed");
+                      setSelectedAlert(null);
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                  >
+                    Dismiss
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setSelectedAlert(null)}
+                  className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
