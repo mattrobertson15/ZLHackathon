@@ -11,13 +11,20 @@ from app.db.repositories import (
     create_detection_results,
     create_safety_events,
     get_upload,
+    get_zone,
     list_detection_results_for_upload,
     update_upload_status,
 )
 from app.models.alert_record import AlertRecord
 from app.models.detection_result import DetectionResult
 from app.models.safety_event import SafetyEvent
-from app.services import alert_service, blob_service, rule_engine, vision_service
+from app.services import (
+    alert_service,
+    blob_service,
+    repeated_violation_service,
+    rule_engine,
+    vision_service,
+)
 from app.services.detection_parser import normalize_detections
 from app.utils.timestamps import to_iso
 from app.utils.video_frames import extract_frames
@@ -184,13 +191,19 @@ def analyze_upload(upload_id: str, request: AnalyzeRequest, db: Session = Depend
 
         events: list[SafetyEvent] = []
         if request.createEvents:
-            events = rule_engine.evaluate(detections, upload_id)
+            zone = get_zone(db, upload.zone_id) if upload.zone_id else None
+            events = rule_engine.evaluate(detections, upload_id, zone)
             events = create_safety_events(db, events)
 
         alerts: list[AlertRecord] = []
         if request.createAlerts and events:
-            alerts = alert_service.generate_alerts(events)
-            alerts = create_alerts(db, alerts)
+            new_alerts = alert_service.generate_alerts(events)
+            # A newly created violation may push its zone group over the weekly
+            # repeated-violation threshold; see ZONE_CAMERA_PLAN.md#4.
+            new_alerts += repeated_violation_service.generate_repeated_violation_alerts(
+                db, events
+            )
+            alerts = create_alerts(db, new_alerts)
 
         update_upload_status(db, upload_id, "processed")
     except Exception as exc:

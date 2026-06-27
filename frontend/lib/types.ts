@@ -60,9 +60,28 @@ export interface Upload {
   fileType: "image" | "video";
   fileUrl: string;
   locationLabel?: string | null;
+  zoneId?: string | null;
+  cameraId?: string | null;
+  zoneDisplayName?: string | null;
   notes?: string | null;
   uploadedAt: string;
   status: "uploaded" | "processing" | "processed" | "failed";
+}
+
+export interface Zone {
+  id: string;
+  displayName: string;
+  requiredPpe: string[];
+  severityOverrides: Record<string, string>;
+  createdAt: string;
+}
+
+export interface Camera {
+  id: string;
+  displayName: string;
+  zoneId: string;
+  status: "active" | "inactive";
+  createdAt: string;
 }
 
 export type EventType = "positive_observation" | "ppe_violation" | "uncertain_review";
@@ -83,7 +102,11 @@ export interface SafetyEvent {
   createdAt: string;
 }
 
-export type AlertType = "supervisor_review" | "coaching_reminder" | "manual_review";
+export type AlertType =
+  | "supervisor_review"
+  | "coaching_reminder"
+  | "manual_review"
+  | "repeated_violation";
 export type AlertStatus = "draft" | "queued" | "sent_mock" | "dismissed";
 
 export interface AlertRecord {
@@ -94,6 +117,18 @@ export interface AlertRecord {
   message: string;
   status: AlertStatus;
   createdAt: string;
+}
+
+export interface RepeatedViolation {
+  zoneLabel: string;
+  violationType: ViolationType;
+  count: number;
+  distinctUploadCount: number;
+  severity: Severity;
+  latestEventId: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  message: string;
 }
 
 export interface AnalyticsOverview {
@@ -112,6 +147,7 @@ export interface AnalyticsOverview {
     no_helmet: number;
     no_vest: number;
   };
+  repeatedViolations: RepeatedViolation[];
 }
 
 export interface TrendPoint {

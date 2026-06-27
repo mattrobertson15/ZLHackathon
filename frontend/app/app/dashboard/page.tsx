@@ -8,6 +8,7 @@ import ComplianceScoreCard from "@/components/ComplianceScoreCard";
 import StatCard from "@/components/StatCard";
 import ViolationBreakdownCard from "@/components/ViolationBreakdownCard";
 import SeverityBreakdownCard from "@/components/SeverityBreakdownCard";
+import RepeatedViolationsCard from "@/components/RepeatedViolationsCard";
 import TrendTable from "@/components/TrendTable";
 
 export default function Dashboard() {
@@ -132,6 +133,10 @@ export default function Dashboard() {
                 { label: "Low", value: overview?.severityBreakdown.low || 0, color: "green" },
               ]}
             />
+          </div>
+
+          <div className="mt-6">
+            <RepeatedViolationsCard items={overview?.repeatedViolations || []} />
           </div>
 
           {trends && trends.points.length > 0 && (

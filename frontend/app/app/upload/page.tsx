@@ -1,20 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { uploadFile, analyzeUpload } from "@/lib/api";
+import { uploadFile, analyzeUpload, listZones } from "@/lib/api";
+import type { Zone } from "@/lib/types";
 import UploadDropzone from "@/components/UploadDropzone";
 
 export default function UploadPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
-  const [locationLabel, setLocationLabel] = useState("");
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [zoneId, setZoneId] = useState("");
   const [notes, setNotes] = useState("");
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadId, setUploadId] = useState<string | null>(null);
+
+  useEffect(() => {
+    listZones()
+      .then(setZones)
+      .catch(() => setZones([]));
+  }, []);
 
   const handleFileSelect = (selectedFile: File) => {
     setFile(selectedFile);
@@ -31,10 +39,10 @@ export default function UploadPage() {
     try {
       setUploading(true);
       setError(null);
-      const upload = await uploadFile(file, locationLabel, notes);
+      const upload = await uploadFile(file, undefined, notes, zoneId || undefined);
       setUploadId(upload.id);
       setFile(null);
-      setLocationLabel("");
+      setZoneId("");
       setNotes("");
 
       setAnalyzing(true);
@@ -70,15 +78,26 @@ export default function UploadPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Location Label (optional)
+                  Zone (optional)
                 </label>
-                <input
-                  type="text"
-                  value={locationLabel}
-                  onChange={(e) => setLocationLabel(e.target.value)}
-                  placeholder="e.g., Warehouse Floor, Loading Dock"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <select
+                  value={zoneId}
+                  onChange={(e) => setZoneId(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">No specific zone</option>
+                  {zones.map((zone) => (
+                    <option key={zone.id} value={zone.id}>
+                      {zone.displayName}
+                      {zone.requiredPpe.length > 0
+                        ? ` — requires ${zone.requiredPpe.join(", ")}`
+                        : " — no PPE required"}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  The zone determines which PPE rules apply to this upload.
+                </p>
               </div>
 
               <div>

@@ -5,7 +5,17 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import UPLOAD_STORAGE_PATH
 from app.db.database import init_db
-from app.routes import admin, alerts, analytics, events, inference, summaries, uploads
+from app.routes import (
+    admin,
+    alerts,
+    analytics,
+    cameras,
+    events,
+    inference,
+    summaries,
+    uploads,
+    zones,
+)
 
 app = FastAPI(title="Safety Sentinel API")
 
@@ -32,10 +42,20 @@ async def http_exception_handler(request, exc: HTTPException):
 @app.on_event("startup")
 def on_startup():
     init_db()
+    from app.db.database import SessionLocal
+    from app.db.seeds import seed_location_data
+
+    db = SessionLocal()
+    try:
+        seed_location_data(db)
+    finally:
+        db.close()
 
 
 app.include_router(uploads.router)
 app.include_router(inference.router)
+app.include_router(zones.router)
+app.include_router(cameras.router)
 app.include_router(events.router)
 app.include_router(alerts.router)
 app.include_router(analytics.router)
