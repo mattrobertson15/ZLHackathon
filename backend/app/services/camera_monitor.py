@@ -97,7 +97,7 @@ def capture_and_analyze(db: Session, camera: Camera) -> dict:
         for f in captured
     ]
     frame_url_by_timestamp = {
-        f["frameTimestamp"]: f"/media/{upload_id}_frames/{os.path.basename(f['path'])}"
+        f["frameTimestamp"]: f"/media/{upload_id}_frames/{os.path.basename(f['framePath'])}"
         for f in captured
     }
 
