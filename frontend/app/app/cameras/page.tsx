@@ -211,7 +211,7 @@ export default function CamerasPage() {
   const [tick, setTick] = useState(0);
 
   const [displayName, setDisplayName] = useState("");
-  const [rtspUrl, setRtspUrl] = useState("rtsp://safety-sentinel-relay.internal:8554/live/phone-demo");
+  const [rtspUrl, setRtspUrl] = useState("rtsp://safety-sentinel-relay.internal:8554/phone-demo");
   const [zoneId, setZoneId] = useState("");
   const [interval, setIntervalSeconds] = useState(15);
   const [submitting, setSubmitting] = useState(false);
@@ -365,11 +365,14 @@ export default function CamerasPage() {
             <p className="text-xs text-gray-500 mt-1">
               For the phone relay use{" "}
               <code className="font-mono">
-                rtsp://safety-sentinel-relay.internal:8554/live/phone-demo
+                rtsp://safety-sentinel-relay.internal:8554/phone-demo
               </code>{" "}
-              (push from Streamlabs to{" "}
+              (Streamlabs mobile: push to{" "}
+              <code className="font-mono">rtmp://safety-sentinel-relay.fly.dev:1935/phone-demo</code>
+              {" — "}Streamlabs OBS desktop: server{" "}
               <code className="font-mono">rtmp://safety-sentinel-relay.fly.dev:1935/live</code>
-              {" "}with stream key <code className="font-mono">phone-demo</code>).
+              {" "}+ stream key <code className="font-mono">phone-demo</code>, then use{" "}
+              <code className="font-mono">…/live/phone-demo</code> as the RTSP URL).
             </p>
             <div className="mt-3 flex items-center gap-3">
               <button

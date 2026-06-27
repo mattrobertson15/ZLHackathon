@@ -38,8 +38,6 @@ def _apply_migrations():
     """Add columns that may be missing from databases created before these fields existed."""
     from sqlalchemy import text
 
-    # SQLite < 3.35 doesn't support IF NOT EXISTS on ALTER TABLE, so we catch
-    # the duplicate-column error and continue instead.
     new_columns = [
         "ALTER TABLE uploads ADD COLUMN zone_id VARCHAR",
         "ALTER TABLE uploads ADD COLUMN camera_id VARCHAR",
@@ -54,13 +52,27 @@ def _apply_migrations():
         "ALTER TABLE cameras ADD COLUMN last_capture_at TIMESTAMP",
         "ALTER TABLE cameras ADD COLUMN last_error VARCHAR",
     ]
-    with engine.connect() as conn:
+
+    is_postgres = not DATABASE_URL.startswith("sqlite")
+
+    if is_postgres:
+        # PostgreSQL supports IF NOT EXISTS on ALTER TABLE; any failure would abort
+        # the whole transaction, so we use it to skip already-existing columns safely.
+        pg_stmts = [s.replace("ADD COLUMN ", "ADD COLUMN IF NOT EXISTS ") for s in new_columns]
+        with engine.connect() as conn:
+            for stmt in pg_stmts:
+                conn.execute(text(stmt))
+            conn.commit()
+    else:
+        # SQLite < 3.35 doesn't support IF NOT EXISTS on ALTER TABLE, so each
+        # statement runs in its own connection to avoid aborting later ones.
         for stmt in new_columns:
             try:
-                conn.execute(text(stmt))
+                with engine.connect() as conn:
+                    conn.execute(text(stmt))
+                    conn.commit()
             except Exception:
                 pass  # column already exists
-        conn.commit()
 
 
 def get_db():

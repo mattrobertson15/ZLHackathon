@@ -37,20 +37,39 @@ The backend (`safety-sentinel-api`) reaches the feed at
 `rtsp://safety-sentinel-relay.internal:8554/phone-demo` with no extra config —
 Fly's 6PN private network exposes every app over `.internal` automatically.
 
-## Phone setup (Larix Broadcaster — free, iOS/Android)
+## Phone setup
 
-Use a **broadcaster/push** app, not an RTSP *server* app. In Larix add a connection:
+Use a **broadcaster/push** app, not an RTSP *server* app.
+
+**Streamlabs mobile (iOS/Android):** Settings → Go Live → Custom RTMP
+
+```
+RTMP URL:  rtmp://safety-sentinel-relay.fly.dev:1935/phone-demo
+```
+
+**Larix Broadcaster (iOS/Android):** Connections → add connection
 
 ```
 URL:  rtmp://safety-sentinel-relay.fly.dev:1935/phone-demo
-User: phone
-Pass: <the password you set in mediamtx.yml>
 ```
+
+**Streamlabs OBS (desktop):** Settings → Stream → Custom
+
+```
+Server:     rtmp://safety-sentinel-relay.fly.dev:1935/live
+Stream Key: phone-demo
+```
+
+Then in Safety Sentinel, use the RTSP URL that matches:
+
+| Client              | RTSP URL for camera field |
+|---------------------|---------------------------|
+| Streamlabs mobile / Larix | `rtsp://safety-sentinel-relay.internal:8554/phone-demo` |
+| Streamlabs OBS desktop    | `rtsp://safety-sentinel-relay.internal:8554/live/phone-demo` |
 
 Start broadcasting, then in Safety Sentinel:
 
-1. Cameras page → paste `rtsp://safety-sentinel-relay.internal:8554/phone-demo`
-   into the RTSP URL field → **Test Stream** (should report Connected).
+1. Cameras page → paste the matching RTSP URL → **Test Stream** (should report Connected).
 2. Register the camera (zone `general-floor`, interval `1–2s`) → **Start monitoring**.
 3. Walk into frame without a hard hat → a violation event + the red
    "Live Violation Detected" banner appear on the camera detail page.

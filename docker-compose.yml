@@ -83,6 +83,9 @@ services:
       - mediamtx
     ports:
       - "8000:8000"
+    env_file:
+      - path: .env.local
+        required: false
     environment:
       # The emulated feeds, reachable on the private compose network.
       DEMO_RTSP_URL: rtsp://mediamtx:8554/worksite-demo
@@ -92,7 +95,8 @@ services:
       # every feed without clicking Start in the UI.
       SEED_CAMERA_MONITORING: "true"
       OPENCV_FFMPEG_CAPTURE_OPTIONS: "rtsp_transport;tcp"
-      # Provide vision keys here to use a real model instead of mock detections:
+      # API keys are loaded from .env.local via env_file above.
+      # To override a key here, uncomment and set the value explicitly:
       # ROBOFLOW_API_KEY: ""
       # QWEN_API_KEY: ""
       # ANTHROPIC_API_KEY: ""
