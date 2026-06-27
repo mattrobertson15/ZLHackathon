@@ -22,25 +22,13 @@ srt: no
 api: no
 metrics: no
 
-# --- Authentication (MediaMTX internal users) --------------------------------
-# Reads are unauthenticated but only reachable over the private .internal
-# network (8554 is never published publicly). Publishing REQUIRES credentials so
-# nobody can inject video into the public ingest. Change the publish password
-# before deploying (or override it — see relay/README.md).
-authInternalUsers:
-  - user: any
-    pass:
-    permissions:
-      - action: read
-  - user: phone
-    pass: CHANGE_ME_STRONG_PASSWORD
-    permissions:
-      - action: publish
-
 # --- Paths -------------------------------------------------------------------
 paths:
-  # The live phone feed. Push here from Larix Broadcaster:
-  #   rtmp://safety-sentinel-relay.fly.dev:1935/phone-demo  (user: phone)
+  # Phone feed via Larix Broadcaster (app=live, streamkey=phone-demo):
+  #   rtmp://safety-sentinel-relay.fly.dev:1935/live/phone-demo
+  # Backend reads: rtsp://safety-sentinel-relay.internal:8554/live/phone-demo
+  live/phone-demo:
+  # ffmpeg test stream shorthand (no stream key required):
+  #   rtmp://safety-sentinel-relay.fly.dev:1935/phone-demo
   phone-demo:
-  # Optional fallback: an ffmpeg file loop can publish here (see docker-compose).
   worksite-demo:

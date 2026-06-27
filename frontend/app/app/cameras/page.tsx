@@ -202,7 +202,7 @@ export default function CamerasPage() {
   const [tick, setTick] = useState(0);
 
   const [displayName, setDisplayName] = useState("");
-  const [rtspUrl, setRtspUrl] = useState("rtsp://localhost:8554/worksite-demo");
+  const [rtspUrl, setRtspUrl] = useState("rtsp://safety-sentinel-relay.internal:8554/live/phone-demo");
   const [zoneId, setZoneId] = useState("");
   const [interval, setIntervalSeconds] = useState(15);
   const [submitting, setSubmitting] = useState(false);
@@ -322,7 +322,7 @@ export default function CamerasPage() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="e.g., Loading Dock Camera"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
           <div>
@@ -332,7 +332,7 @@ export default function CamerasPage() {
             <select
               value={zoneId}
               onChange={(e) => setZoneId(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">No zone</option>
               {zones.map((z) => (
@@ -351,15 +351,16 @@ export default function CamerasPage() {
               value={rtspUrl}
               onChange={(e) => setRtspUrl(e.target.value)}
               placeholder="rtsp://host:8554/stream"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <p className="text-xs text-gray-500 mt-1">
-              For the demo emulator use{" "}
+              For the phone relay use{" "}
               <code className="font-mono">
-                rtsp://localhost:8554/worksite-demo
+                rtsp://safety-sentinel-relay.internal:8554/live/phone-demo
               </code>{" "}
-              (or <code className="font-mono">rtsp://mediamtx:8554/...</code>{" "}
-              inside docker-compose).
+              (push from Streamlabs to{" "}
+              <code className="font-mono">rtmp://safety-sentinel-relay.fly.dev:1935/live</code>
+              {" "}with stream key <code className="font-mono">phone-demo</code>).
             </p>
             <div className="mt-3 flex items-center gap-3">
               <button
@@ -414,7 +415,7 @@ export default function CamerasPage() {
               min={1}
               value={interval}
               onChange={(e) => setIntervalSeconds(Number(e.target.value))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <p className="text-xs text-gray-500 mt-1">
               Use 1–2s for a snappy live demo (e.g. a walk-by); larger values
