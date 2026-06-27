@@ -8,6 +8,7 @@ import {
   SafetySummary,
   AnalyzeResponse,
   ModelProvider,
+  UploadResults,
 } from "./types";
 import type { DemoScenarioResponse } from "./types";
 
@@ -88,6 +89,10 @@ export async function getDetections(uploadId: string): Promise<Detection[]> {
   return data.detections;
 }
 
+export async function getUploadResults(uploadId: string): Promise<UploadResults> {
+  return apiCall<UploadResults>(`/uploads/${uploadId}/results`);
+}
+
 // Analysis API
 export async function analyzeUpload(
   uploadId: string,
@@ -133,11 +138,12 @@ export async function getEvent(eventId: string): Promise<SafetyEvent> {
 
 export async function updateEvent(
   eventId: string,
-  status: string
+  status: string,
+  note?: string
 ): Promise<SafetyEvent> {
   const data = await apiCall<{ event: SafetyEvent }>(`/events/${eventId}`, {
     method: "PATCH",
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, note: note || undefined }),
   });
   return data.event;
 }

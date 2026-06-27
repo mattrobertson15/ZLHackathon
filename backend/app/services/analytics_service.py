@@ -49,6 +49,11 @@ def get_overview(db: Session, period: str = "all") -> dict:
         if event.violation_type:
             violation_breakdown[event.violation_type] += 1
 
+    status_breakdown = {"open": 0, "reviewed": 0, "dismissed": 0, "resolved": 0}
+    for event in events:
+        if event.status in status_breakdown:
+            status_breakdown[event.status] += 1
+
     return {
         "period": period,
         "compliancePercentage": _compliance_percentage(positive_observations, total_observations),
@@ -58,6 +63,7 @@ def get_overview(db: Session, period: str = "all") -> dict:
         "openEvents": open_events,
         "severityBreakdown": dict(severity_breakdown),
         "violationBreakdown": dict(violation_breakdown),
+        "statusBreakdown": status_breakdown,
     }
 
 
