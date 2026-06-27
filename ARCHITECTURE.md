@@ -290,6 +290,22 @@ compliance_percentage =
 
 Use the simpler event-based calculation for the hackathon MVP.
 
+Implemented in `app/services/analytics_service.py` (`get_overview`, `get_trends`),
+exposed via `GET /analytics/overview` and `GET /analytics/trends`.
+
+* `get_overview(period)` — `period` is a rolling window ending now: `daily` (last
+  1 day), `weekly` (last 7 days), `monthly` (last 30 days), or `all` (no
+  filter, the default). `severityBreakdown` and `violationBreakdown` are
+  computed over `ppe_violation` events only, so their counts sum to
+  `totalViolations`.
+* `get_trends(period)` — buckets events into points over a fixed lookback
+  window: `daily` (last 14 days, one point per calendar day), `weekly` (last 8
+  weeks, one point per ISO week start), `monthly` (last 6 months, one point
+  per calendar month). Only buckets containing at least one event are
+  returned (no zero-filled gaps).
+* Both reuse `list_safety_events_since` (`app/db/repositories.py`) for the
+  underlying date-range query.
+
 9. Claude Summary Generator
 
 The summary generator converts event and analytics data into readable safety reports.
@@ -344,7 +360,7 @@ backend/
       uploads.py        [done]
       inference.py       [done — analyze + detections]
       events.py          [done]
-      analytics.py        [pending: Phase 6]
+      analytics.py        [done]
       alerts.py           [done]
       summaries.py        [pending: Phase 7]
     services/
@@ -352,7 +368,7 @@ backend/
       detection_parser.py [done]
       rule_engine.py       [done]
       media_service.py     [pending: not yet broken out, frame extraction lives in utils/video_frames.py]
-      analytics_service.py [pending: Phase 6]
+      analytics_service.py [done]
       alert_service.py     [done]
       summary_service.py   [pending: Phase 7]
     models/

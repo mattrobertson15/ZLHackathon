@@ -55,11 +55,11 @@ up once `QWEN_API_KEY` and the Qwen3-VL30B request/response contract are availab
 - [x] Store alerts in database (`alert_records` table)
 
 ## Phase 6: Analytics
-- [ ] Calculate compliance percentage (positive_obs / total_observations * 100)
-- [ ] Aggregate violation breakdown (no_helmet vs no_vest counts)
-- [ ] Implement trending (daily, weekly, monthly compliance)
-- [ ] Create analytics endpoints (`GET /analytics/overview`, `GET /analytics/trends`)
-- [ ] Support period filters (daily, weekly, monthly, all)
+- [x] Calculate compliance percentage (positive_obs / total_observations * 100)
+- [x] Aggregate violation breakdown (no_helmet vs no_vest counts)
+- [x] Implement trending (daily, weekly, monthly compliance)
+- [x] Create analytics endpoints (`GET /analytics/overview`, `GET /analytics/trends`)
+- [x] Support period filters (daily, weekly, monthly, all)
 
 ## Phase 7: AI Safety Summaries
 - [ ] Integrate Claude API client
