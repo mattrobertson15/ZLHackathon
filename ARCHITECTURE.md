@@ -508,11 +508,21 @@ ROBOFLOW_API_KEY=your_roboflow_key_here
 UPLOAD_STORAGE_PATH=./uploads
 DATABASE_URL=sqlite:///./safety_sentinel.db
 # Frontend
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_API_URL=http://localhost:8000
 
 Note: API keys can be omitted individually. The system will use the first available
 inference backend. Roboflow requires an API key to `serverless.roboflow.com` for the
 personal-protective-equipment-combined-model/8.
+
+Vercel deployment uses the root `vercel.json` services config:
+
+* `frontend` serves the Next.js app at `/`
+* `backend` serves FastAPI at `/_/backend`
+
+In local development, the frontend calls `http://localhost:8000` by default. In
+production, it calls `/_/backend` unless `NEXT_PUBLIC_API_URL` is set. When the
+backend detects `VERCEL=1`, SQLite and upload defaults move to `/tmp` because the
+deployed runtime filesystem is ephemeral and only `/tmp` is writable.
 
 Non-Goals
 

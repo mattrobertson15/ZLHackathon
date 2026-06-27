@@ -23,7 +23,7 @@
 
 3. **Run the backend**:
    ```bash
-   uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
    ```
    
    The API will be available at `http://localhost:8000`
@@ -51,12 +51,27 @@
    - Landing page: `http://localhost:3000`
    - App dashboard: `http://localhost:3000/app/dashboard`
 
+## Vercel Deployment
+
+The root `vercel.json` defines two services:
+
+- `frontend`: Next.js app from `frontend/`, served at `/`
+- `backend`: FastAPI app from `backend/`, served at `/_/backend`
+
+The frontend uses `NEXT_PUBLIC_API_URL` when set. If it is not set, it calls
+`http://localhost:8000` in local development and `/_/backend` in production.
+
+On Vercel, the backend stores demo SQLite data and uploads in `/tmp` by default.
+This keeps the service writable, but the data is ephemeral and should not be
+treated as durable production storage.
+
 ## Project Structure
 
 ```
 .
 ├── backend/                 # FastAPI backend
-│   ├── main.py             # Entry point, basic health check
+│   ├── app/
+│   │   └── main.py         # Entry point, routes, health check
 │   ├── requirements.txt     # Python dependencies
 │   └── .env.example        # Environment template
 ├── frontend/               # Next.js frontend

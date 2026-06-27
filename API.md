@@ -17,6 +17,14 @@ Base URL
 
 http://localhost:8000
 
+When deployed through the root `vercel.json` services config, the FastAPI
+backend is routed under the same Vercel domain at:
+
+/_/backend
+
+The frontend defaults to `http://localhost:8000` during local development and
+`/_/backend` in production unless `NEXT_PUBLIC_API_URL` is set.
+
 Note: the `/uploads` path is reserved for the upload API resource
 (`POST /uploads`, `GET /uploads`, `GET /uploads/{upload_id}`). To avoid
 routing collisions between the resource path and static file serving,
