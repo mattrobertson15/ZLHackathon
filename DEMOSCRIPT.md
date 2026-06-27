@@ -190,6 +190,42 @@ Example summary:
 
 This week, Safety Sentinel analyzed 248 visual safety observations. Overall PPE compliance was 87%. The most common issue was missing safety vests, followed by missing helmets. Most violations were medium severity and suitable for supervisor review. Recommended actions include reinforcing PPE requirements during pre-shift briefings and reviewing signage near high-traffic zones.
 
+Optional Demo Step: Live Camera (RTSP) Emulation
+
+This step shows Safety Sentinel watching a "live CCTV camera" instead of a
+one-off upload. The camera is emulated by looping a video file into an RTSP
+server, so it behaves like a real feed without needing a physical camera.
+
+Setup (before the demo):
+
+1. Build demo footage (once): `./emulator/make-sample-video.sh`
+   (or drop your own clip in as `emulator/media/demo-worksite.mp4`).
+2. Start the stack: `docker compose up --build`
+   This runs mediamtx (RTSP server) + ffmpeg (restream loop) + the backend.
+
+During the demo:
+
+1. Go to the Cameras page.
+2. Register a camera with RTSP URL `rtsp://mediamtx:8554/worksite-demo`
+   (use `rtsp://localhost:8554/worksite-demo` if the backend runs on the host).
+3. Click "Start monitoring." The live snapshot preview appears and the status
+   flips to "Live."
+4. Wait one interval (default 15s) — new PPE events appear automatically on the
+   Dashboard, Events, and Alerts pages, attributed to the camera.
+
+Suggested narration:
+
+The same pipeline that analyzes uploads also runs against a live RTSP camera.
+Here we've emulated a worksite camera by restreaming a video file, but to Safety
+Sentinel it's just an RTSP URL — the kind a real CCTV system exposes. Once
+monitoring starts, the backend captures frames on an interval, runs PPE
+inference, and raises safety events continuously, with no human in the loop.
+This is how the product moves from reviewing clips to always-on monitoring.
+
+Technical note: continuous monitoring needs an always-on process, so this stack
+runs as containers on a persistent host rather than on serverless. The RTSP feed
+stays on a private network — only the API is exposed.
+
 Closing Pitch
 
 Suggested closing:
@@ -269,7 +305,11 @@ Possible Q&A Answers
 
 Why uploaded images and videos instead of live cameras?
 
-The MVP starts with uploads to reduce implementation complexity and avoid unnecessary surveillance concerns. The same architecture can later support live camera feeds or periodic frame sampling.
+The MVP starts with uploads to reduce complexity and avoid unnecessary
+surveillance concerns, but the same architecture already supports live RTSP
+cameras — we demo this with an emulated camera (a video file restreamed over
+RTSP). The backend captures frames on an interval and runs the identical
+detection-to-event pipeline, so live monitoring and uploads share one code path.
 
 Why no employee identification?
 

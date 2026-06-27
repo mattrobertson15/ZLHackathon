@@ -62,8 +62,32 @@ export interface Upload {
   fileUrl: string;
   locationLabel?: string | null;
   notes?: string | null;
+  sourceType?: "upload" | "camera";
+  cameraId?: string | null;
   uploadedAt: string;
   status: "uploaded" | "processing" | "processed" | "failed";
+}
+
+export type CameraStatus = "offline" | "live" | "error";
+
+export interface Camera {
+  id: string;
+  label: string;
+  rtspUrl: string;
+  locationLabel?: string | null;
+  status: CameraStatus;
+  monitoring: boolean;
+  captureIntervalSeconds: number;
+  lastCaptureAt?: string | null;
+  lastError?: string | null;
+  recentEventCount: number;
+  createdAt: string;
+}
+
+export interface CameraDetail {
+  camera: Camera;
+  captures: Upload[];
+  events: SafetyEvent[];
 }
 
 export type EventType = "positive_observation" | "ppe_violation" | "uncertain_review";

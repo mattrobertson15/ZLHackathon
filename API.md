@@ -90,10 +90,17 @@ Response
     "fileName": "warehouse-floor.jpg",
     "fileType": "image",
     "fileUrl": "/media/warehouse-floor.jpg",
+    "sourceType": "upload",
+    "cameraId": null,
     "uploadedAt": "2026-06-27T14:30:00Z",
     "status": "uploaded"
   }
 }
+
+Every upload response includes `sourceType` (`"upload"` or `"camera"`) and
+`cameraId`. Direct file uploads are `"upload"` with `cameraId: null`; rows
+created by the live camera monitor are `"camera"` with the originating
+`cameraId` set. See [Cameras](#cameras).
 
 GET /uploads
 
@@ -624,6 +631,121 @@ Downloaded files use the `.md` extension and include manager-ready narrative
 sections or dashboard KPI tables. A future backend endpoint could add signed PDF
 generation, but that is intentionally out of scope for the hackathon MVP.
 
+Cameras
+
+Live RTSP camera feeds. For demos these are typically emulated (a video file
+restreamed via ffmpeg + mediamtx); the backend treats the RTSP URL like a real
+camera. Each capture cycle is recorded as a `camera`-sourced Upload, so the
+detections/events/alerts it produces appear across the existing Events,
+Dashboard, Alerts, and Analytics endpoints. See
+[ARCHITECTURE.md](ARCHITECTURE.md#12-camera--rtsp-ingestion-layer).
+
+Note: the camera monitor only runs on a persistent host, not Vercel.
+
+Camera object
+
+{
+  "id": "cam_a1b2c3d4e5f6",
+  "label": "Loading Dock Camera",
+  "rtspUrl": "rtsp://mediamtx:8554/worksite-demo",
+  "locationLabel": "Loading Dock",
+  "status": "live",                  // offline | live | error
+  "monitoring": true,
+  "captureIntervalSeconds": 15,
+  "lastCaptureAt": "2026-06-27T16:40:05Z",
+  "lastError": null,
+  "recentEventCount": 7,
+  "createdAt": "2026-06-27T16:38:00Z"
+}
+
+POST /cameras
+
+Register a camera.
+
+Request
+
+{
+  "label": "Loading Dock Camera",
+  "rtspUrl": "rtsp://mediamtx:8554/worksite-demo",
+  "locationLabel": "Loading Dock",   // optional
+  "captureIntervalSeconds": 15        // optional, default 15, min 5
+}
+
+Response
+
+{ "camera": { ...Camera } }
+
+Errors: INVALID_INTERVAL (captureIntervalSeconds < 5).
+
+GET /cameras
+
+List all registered cameras.
+
+Response
+
+{ "cameras": [ { ...Camera } ] }
+
+GET /cameras/{camera_id}
+
+Camera detail with its recent captures and events.
+
+Response
+
+{
+  "camera": { ...Camera },
+  "captures": [ { ...Upload } ],     // recent camera-sourced uploads (sourceType="camera")
+  "events": [ { ...SafetyEvent } ]   // recent events from this camera
+}
+
+Errors: CAMERA_NOT_FOUND.
+
+POST /cameras/{camera_id}/start
+
+Enable continuous monitoring and run one immediate capture. The background
+monitor then captures every `captureIntervalSeconds`. Sets `status` to `live`
+on success or `error` (with `lastError`) if the stream can't be reached.
+
+Response
+
+{ "camera": { ...Camera } }
+
+POST /cameras/{camera_id}/stop
+
+Disable monitoring; sets `status` to `offline`.
+
+Response
+
+{ "camera": { ...Camera } }
+
+POST /cameras/{camera_id}/capture
+
+Capture and analyze once, immediately (independent of the monitoring loop).
+
+Response
+
+{
+  "camera": { ...Camera },
+  "detections": 4,
+  "events": [ { ...SafetyEvent } ]
+}
+
+Errors: CAPTURE_FAILED (502) if the stream can't be opened/read.
+
+GET /cameras/{camera_id}/snapshot
+
+Returns the most recent captured frame as `image/jpeg` (binary). The Cameras
+page polls this with a cache-busting query param for a near-live preview.
+
+Errors: NO_SNAPSHOT (404) if no capture exists yet.
+
+DELETE /cameras/{camera_id}
+
+Remove a camera. Its previously created events are left intact.
+
+Response
+
+{ "status": "success", "message": "Camera 'cam_...' removed." }
+
 Suggested MVP Endpoint Priority
 
 Build endpoints in this order:
@@ -660,6 +782,10 @@ EVENT_NOT_FOUND
 ALERT_NOT_FOUND
 SUMMARY_NOT_FOUND
 SUMMARY_GENERATION_FAILED
+CAMERA_NOT_FOUND
+INVALID_INTERVAL
+CAPTURE_FAILED
+NO_SNAPSHOT
 
 Notes for Hackathon Implementation
 

@@ -13,6 +13,7 @@ Base = declarative_base()
 def init_db():
     from app.models import (  # noqa: F401  (ensure models are registered)
         alert_record,
+        camera,
         detection_result,
         safety_event,
         summary,
@@ -31,6 +32,8 @@ def _apply_migrations():
         "ALTER TABLE detection_results ADD COLUMN frame_url TEXT",
         "ALTER TABLE safety_events ADD COLUMN status_updated_at DATETIME",
         "ALTER TABLE safety_events ADD COLUMN review_note TEXT",
+        "ALTER TABLE uploads ADD COLUMN source_type TEXT DEFAULT 'upload'",
+        "ALTER TABLE uploads ADD COLUMN camera_id TEXT",
     ]
     with engine.connect() as conn:
         for stmt in new_columns:

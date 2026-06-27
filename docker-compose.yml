@@ -1,0 +1,74 @@
+# CCTV/RTSP emulation + Safety Sentinel backend.
+#
+# Three services on a private network so the backend reaches the RTSP feed
+# INTERNALLY (rtsp://mediamtx:8554/...) — the stream is never publicly exposed,
+# only the API on :8000 is. See DEMOSCRIPT.md and ARCHITECTURE.md.
+#
+#   1. mediamtx — the RTSP server (what plain `ffmpeg -f rtsp` was missing).
+#   2. ffmpeg   — loops emulator/media/demo-worksite.mp4 into the RTSP server.
+#   3. backend  — FastAPI + the continuous camera monitor.
+#
+# Usage:
+#   ./emulator/make-sample-video.sh            # one-time: build the demo video
+#   docker compose up --build
+#   # register a camera at rtsp://mediamtx:8554/worksite-demo via the Cameras page
+#
+# NOTE: this stack must run on a persistent container host (Fly.io / Render /
+# Railway / a VM), NOT Vercel — serverless cannot run the always-on monitor.
+
+services:
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    restart: unless-stopped
+    ports:
+      # Exposed only for local testing (ffprobe/VLC). In production you can drop
+      # these — the backend reaches mediamtx over the private network.
+      - "8554:8554" # RTSP
+      - "8888:8888" # HLS (optional smoother live preview)
+    networks:
+      - sentinel
+
+  ffmpeg:
+    image: jrottenberg/ffmpeg:6.1-ubuntu
+    restart: unless-stopped
+    depends_on:
+      - mediamtx
+    volumes:
+      - ./emulator/media:/media:ro
+    # -re paces at realtime; -stream_loop -1 loops forever. Re-encode to H.264
+    # so the RTSP output is broadly decodable regardless of source codec.
+    command: >
+      -re -stream_loop -1 -i /media/demo-worksite.mp4
+      -c:v libx264 -preset veryfast -tune zerolatency -pix_fmt yuv420p
+      -an -f rtsp -rtsp_transport tcp
+      rtsp://mediamtx:8554/worksite-demo
+    networks:
+      - sentinel
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      - mediamtx
+    ports:
+      - "8000:8000"
+    environment:
+      # The emulated feed, reachable on the private compose network.
+      DEMO_RTSP_URL: rtsp://mediamtx:8554/worksite-demo
+      OPENCV_FFMPEG_CAPTURE_OPTIONS: "rtsp_transport;tcp"
+      # Provide vision keys here to use a real model instead of mock detections:
+      # ROBOFLOW_API_KEY: ""
+      # QWEN_API_KEY: ""
+      # ANTHROPIC_API_KEY: ""
+    volumes:
+      - backend-data:/data
+    networks:
+      - sentinel
+
+networks:
+  sentinel:
+    driver: bridge
+
+volumes:
+  backend-data:

@@ -429,6 +429,73 @@ This avoids adding a backend report-generation surface while still giving
 managers a portable artifact they can open, share, or print. PDF generation is a
 future enhancement.
 
+12. Camera / RTSP Ingestion Layer
+
+Safety Sentinel can treat a live RTSP camera feed as a source, in addition to
+one-off file uploads. For demos this is driven by an **emulated** camera: a
+video file looped into an RTSP server (`ffmpeg` + `mediamtx`) that the backend
+consumes exactly like a real CCTV stream. See [DEMOSCRIPT.md](DEMOSCRIPT.md) and
+[emulator/README.md](emulator/README.md).
+
+Why this reuses the existing pipeline. The inference chain (frames → detections
+→ events → alerts) is frame-source-agnostic — it only needs a list of
+`{path, frameTimestamp}`. So a camera capture plugs into the same code an upload
+uses. The shared core was extracted into
+`app/services/analysis_pipeline.py:run_analysis_pipeline`, called by both
+`POST /uploads/{upload_id}/analyze` and the camera monitor.
+
+Camera data model (`app/models/camera.py`, table `cameras`):
+
+type Camera = {
+  id: string;
+  label: string;
+  rtspUrl: string;
+  locationLabel?: string;
+  status: "offline" | "live" | "error";
+  monitoring: boolean;
+  captureIntervalSeconds: number;   // default 15, min 5
+  lastCaptureAt?: string;
+  lastError?: string;
+  createdAt: string;
+};
+
+Capture-as-Upload. Each capture cycle is recorded as an `Upload` row so events,
+alerts, dashboard, and analytics work unchanged. The `uploads` table gained two
+nullable columns (added via the `_apply_migrations` ALTER pattern in
+`db/database.py`):
+
+* `source_type` — `"upload"` (default) or `"camera"`
+* `camera_id` — set for camera captures, used to attribute events back to a camera
+
+Frame capture. `app/utils/rtsp_capture.py:capture_frames_from_rtsp` opens the
+stream with `cv2.VideoCapture` (OpenCV's bundled ffmpeg backend — no new
+dependency) and writes a few spaced JPEGs into `UPLOAD_STORAGE_PATH`, returning
+the same `{framePath, frameTimestamp}` shape as `utils/video_frames.py`. RTSP is
+read over TCP (`OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp`, defaulted in
+`config.py`) for reliability.
+
+Background monitor. `app/services/camera_monitor.py` runs one daemon thread,
+started from `main.py` on startup and stopped on shutdown. Each tick it captures
+from every `monitoring=True` camera that is due (per its interval), runs the
+shared pipeline, and updates `status`/`lastCaptureAt`/`lastError`. Each camera is
+wrapped in try/except so one dead feed cannot stop the loop. The monitor is a
+**no-op on Vercel** (`IS_VERCEL`) — serverless has no long-lived process, cannot
+hold an RTSP connection, and cannot run ffmpeg. Continuous monitoring therefore
+requires a persistent container host (see Deployment below).
+
+Camera API. `app/routes/cameras.py` exposes register/list/detail, start/stop
+monitoring, capture-now, a latest-frame `snapshot` (JPEG, polled by the UI for a
+live preview), and delete. See [API.md#cameras](API.md).
+
+Camera processing flow:
+
+1. User registers a camera (RTSP URL) and clicks Start.
+2. Backend marks `monitoring=true` and runs one immediate capture for instant feedback.
+3. The monitor thread captures frames on the interval thereafter.
+4. Each cycle creates a `camera` Upload, runs `run_analysis_pipeline`, and persists detections/events/alerts.
+5. Events flow into the existing Dashboard, Events, Alerts, and Analytics views.
+6. The Cameras page polls `snapshot` + camera state for a near-live view.
+
 Backend Folder Structure
 
 backend/
@@ -442,16 +509,21 @@ backend/
       analytics.py        [done]
       alerts.py           [done]
       summaries.py        [done]
+    routes/
+      cameras.py         [done — register/start/stop/capture/snapshot]
     services/
       vision_service.py   [done — Roboflow-first auto routing, Qwen comparison, mock fallback]
       detection_parser.py [done]
       rule_engine.py       [done]
+      analysis_pipeline.py [done — shared frames→detections→events→alerts core]
+      camera_monitor.py    [done — background RTSP capture loop]
       media_service.py     [pending: not yet broken out, frame extraction lives in utils/video_frames.py]
       analytics_service.py [done]
       alert_service.py     [done]
       summary_service.py   [done]
     models/
-      upload.py          [done]
+      upload.py          [done — + source_type / camera_id]
+      camera.py          [done]
       detection_result.py [done]
       safety_event.py     [done]
       alert_record.py      [done]
@@ -463,6 +535,7 @@ backend/
       ids.py
       timestamps.py
       video_frames.py
+      rtsp_capture.py    [done — live RTSP frame capture]
 
 Suggested Frontend Folder Structure
 
@@ -477,6 +550,8 @@ frontend/
     dashboard/
       page.tsx
     demo/
+      page.tsx
+    cameras/
       page.tsx
     events/
       page.tsx
@@ -595,6 +670,9 @@ ROBOFLOW_API_KEY=your_roboflow_key_here
 # Storage
 UPLOAD_STORAGE_PATH=./uploads
 DATABASE_URL=sqlite:///./safety_sentinel.db
+# Camera / RTSP emulation
+DEMO_RTSP_URL=rtsp://localhost:8554/worksite-demo
+OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp
 # Vercel Blob (only used when VERCEL=1; falls back to local disk otherwise)
 BLOB_READ_WRITE_TOKEN=your_vercel_blob_rw_token_here
 # Frontend
@@ -626,6 +704,25 @@ production, it calls `/_/backend` unless `NEXT_PUBLIC_API_URL` is set. When the
 backend detects `VERCEL=1`, SQLite and upload defaults move to `/tmp` because the
 deployed runtime filesystem is ephemeral and only `/tmp` is writable.
 
+Container-Host Deployment (for live cameras)
+
+Continuous RTSP monitoring cannot run on Vercel — serverless functions are
+request-scoped, so there is no always-on process to poll a feed, hold an RTSP
+connection, or run ffmpeg. To run the camera feature deployed, the backend moves
+to a persistent container host (Fly.io / Render / Railway / a VM) packaged with
+the emulator via the root `docker-compose.yml`:
+
+* `mediamtx` — RTSP server (the listener `ffmpeg -f rtsp` requires)
+* `ffmpeg` — loops `emulator/media/demo-worksite.mp4` into `rtsp://mediamtx:8554/worksite-demo`
+* `backend` — FastAPI + the camera monitor, reaching the feed over the private network
+
+Because the three services share a private network, the RTSP stream is never
+publicly exposed — only the API on `:8000` is. The Vercel frontend stays as-is;
+point its `NEXT_PUBLIC_API_URL` at the container host's public API URL. The
+backend Dockerfile (`backend/Dockerfile`) sets `DATABASE_URL` and
+`UPLOAD_STORAGE_PATH` to a mounted volume (`/data`) so the DB and captured frames
+persist across restarts.
+
 Non-Goals
 
 The MVP intentionally avoids:
@@ -640,8 +737,10 @@ The MVP intentionally avoids:
 
 Future Architecture Extensions
 
-* Live camera ingestion
-* Real-time stream processing
+* Live camera ingestion — basic RTSP ingestion shipped (see §12); next: many
+  cameras, per-camera workers, reconnection/backoff, and HLS/WebRTC live preview
+* Real-time stream processing — currently interval snapshot capture; next:
+  continuous decoding and per-frame streaming
 * Multi-site dashboards
 * Zone-specific PPE policies
 * Role-based access control

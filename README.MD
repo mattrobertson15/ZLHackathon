@@ -178,10 +178,25 @@ Included in MVP
 * Generate AI safety summaries
 * Download markdown safety reports
 * Display mock alerts in an alert center
+* Monitor an emulated live CCTV (RTSP) camera feed and raise events continuously
+
+Live Camera Emulation (Demo)
+
+Safety Sentinel can treat an RTSP camera feed as a source in addition to file
+uploads. For demos, a camera is emulated by looping a video file into an RTSP
+server (ffmpeg + mediamtx) that the backend consumes like a real CCTV stream.
+Register the feed on the Cameras page, start monitoring, and the backend
+captures frames on an interval and raises PPE events automatically — flowing
+into the same dashboard, events, and alerts. This always-on stack runs via the
+root `docker-compose.yml` on a persistent container host (not Vercel, whose
+serverless model can't run a continuous monitor). See
+[emulator/README.md](emulator/README.md) and
+[ARCHITECTURE.md](ARCHITECTURE.md#12-camera--rtsp-ingestion-layer).
 
 Not Included in MVP
 
-* Live camera stream ingestion
+* Production-grade live ingestion (multi-camera scale, HA, on-prem edge) — basic
+  RTSP ingestion is demo-emulated; production hardening is out of scope
 * Facial recognition
 * Employee identification
 * Real SMS/email/Slack alerts

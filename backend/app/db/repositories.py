@@ -4,10 +4,81 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.models.alert_record import AlertRecord
+from app.models.camera import Camera
 from app.models.detection_result import DetectionResult
 from app.models.safety_event import SafetyEvent
 from app.models.upload import Upload
 
+
+# --- Cameras ---------------------------------------------------------------
+
+def create_camera(db: Session, camera: Camera) -> Camera:
+    db.add(camera)
+    db.commit()
+    db.refresh(camera)
+    return camera
+
+
+def list_cameras(db: Session) -> list[Camera]:
+    return db.query(Camera).order_by(Camera.created_at.desc()).all()
+
+
+def list_monitoring_cameras(db: Session) -> list[Camera]:
+    return db.query(Camera).filter(Camera.monitoring.is_(True)).all()
+
+
+def get_camera(db: Session, camera_id: str) -> Optional[Camera]:
+    return db.query(Camera).filter(Camera.id == camera_id).first()
+
+
+def update_camera(db: Session, camera: Camera) -> Camera:
+    db.commit()
+    db.refresh(camera)
+    return camera
+
+
+def delete_camera(db: Session, camera_id: str) -> bool:
+    camera = get_camera(db, camera_id)
+    if camera is None:
+        return False
+    db.delete(camera)
+    db.commit()
+    return True
+
+
+def list_uploads_for_camera(db: Session, camera_id: str, limit: Optional[int] = None) -> list[Upload]:
+    query = (
+        db.query(Upload)
+        .filter(Upload.camera_id == camera_id)
+        .order_by(Upload.uploaded_at.desc())
+    )
+    if limit:
+        query = query.limit(limit)
+    return query.all()
+
+
+def count_events_for_camera(db: Session, camera_id: str) -> int:
+    return (
+        db.query(SafetyEvent)
+        .join(Upload, SafetyEvent.upload_id == Upload.id)
+        .filter(Upload.camera_id == camera_id)
+        .count()
+    )
+
+
+def list_events_for_camera(db: Session, camera_id: str, limit: Optional[int] = None) -> list[SafetyEvent]:
+    query = (
+        db.query(SafetyEvent)
+        .join(Upload, SafetyEvent.upload_id == Upload.id)
+        .filter(Upload.camera_id == camera_id)
+        .order_by(SafetyEvent.created_at.desc())
+    )
+    if limit:
+        query = query.limit(limit)
+    return query.all()
+
+
+# --- Uploads ---------------------------------------------------------------
 
 def create_upload(db: Session, upload: Upload) -> Upload:
     db.add(upload)

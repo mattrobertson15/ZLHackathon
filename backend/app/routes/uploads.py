@@ -15,9 +15,14 @@ from app.db.repositories import (
     list_uploads,
 )
 from app.models.upload import Upload
-from app.services.serializers import serialize_alert, serialize_detection, serialize_event
+from app.services.serializers import (
+    serialize_alert,
+    serialize_detection,
+    serialize_event,
+    serialize_upload as _serialize_upload,
+)
 from app.utils.ids import generate_id
-from app.utils.timestamps import now_utc, to_iso
+from app.utils.timestamps import now_utc
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
@@ -44,19 +49,6 @@ def _resolve_file_type(filename: str) -> str:
             f"({', '.join(sorted(VIDEO_EXTENSIONS))}).",
         ),
     )
-
-
-def _serialize_upload(upload: Upload) -> dict:
-    return {
-        "id": upload.id,
-        "fileName": upload.file_name,
-        "fileType": upload.file_type,
-        "fileUrl": upload.file_url,
-        "locationLabel": upload.location_label,
-        "notes": upload.notes,
-        "uploadedAt": to_iso(upload.uploaded_at),
-        "status": upload.status,
-    }
 
 
 @router.post("")

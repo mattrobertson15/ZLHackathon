@@ -8,7 +8,8 @@ from app.models.alert_record import AlertRecord
 from app.models.detection_result import DetectionResult
 from app.models.safety_event import SafetyEvent
 from app.models.upload import Upload
-from app.utils.timestamps import now_utc, to_iso
+from app.services.serializers import serialize_upload as _serialize_upload
+from app.utils.timestamps import now_utc
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -17,19 +18,6 @@ DEMO_UPLOAD_IDS = [
     "demo_warehouse_aisle",
     "demo_packout_line",
 ]
-
-
-def _serialize_upload(upload: Upload) -> dict:
-    return {
-        "id": upload.id,
-        "fileName": upload.file_name,
-        "fileType": upload.file_type,
-        "fileUrl": upload.file_url,
-        "locationLabel": upload.location_label,
-        "notes": upload.notes,
-        "uploadedAt": to_iso(upload.uploaded_at),
-        "status": upload.status,
-    }
 
 
 @router.post("/reset")
