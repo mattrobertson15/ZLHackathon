@@ -1,0 +1,468 @@
+ARCHITECTURE.md
+
+Safety Sentinel Architecture
+
+Safety Sentinel is a hackathon MVP for AI-powered PPE safety intelligence. The system analyzes uploaded images and videos from industrial worksites, detects PPE compliance, converts detections into structured safety events, and generates dashboard analytics, mock alerts, and AI safety summaries.
+
+System Goals
+
+The architecture is optimized for:
+
+* Fast hackathon development
+* Clear separation between frontend, backend, model inference, and reporting
+* Support for uploaded images and short videos
+* Easy extension to live camera feeds later
+* Transparent safety-event generation from model outputs
+* Simple dashboard analytics and trend reporting
+* Mock alert workflows without requiring real messaging integrations
+
+High-Level Architecture
+
+User
+  |
+  v
+Next.js Frontend
+  |
+  | upload image/video
+  v
+FastAPI Backend
+  |
+  | store file metadata
+  | process media
+  v
+Vision Inference Layer
+  |
+  | PPE detections
+  v
+Detection Parser + Rule Engine
+  |
+  | structured events
+  v
+Safety Event Store
+  |
+  +--> Dashboard Analytics
+  +--> Mock Alert Center
+  +--> Claude Summary Generator
+
+Main Components
+
+1. Next.js Frontend
+
+The frontend provides the user-facing interface for uploading media, viewing results, reviewing safety events, exploring analytics, and reading generated safety summaries.
+
+Suggested Pages
+
+/
+  Landing / project overview
+/upload
+  Upload image or video for analysis
+/results/[uploadId]
+  View annotated results and generated safety events
+/dashboard
+  Compliance metrics, trends, and violation breakdowns
+/events
+  Safety event log
+/alerts
+  Mock alert center
+/summaries
+  Daily, weekly, and monthly AI-generated safety summaries
+
+Frontend Responsibilities
+
+* Upload images and videos
+* Display processing status
+* Render annotated detection results
+* Show compliance metrics
+* Display event logs
+* Display mock alerts
+* Request AI summaries
+* Visualize trends using Recharts
+
+2. FastAPI Backend
+
+The backend handles uploads, inference orchestration, event generation, analytics, and summary generation.
+
+Backend Responsibilities
+
+* Accept uploaded images and videos
+* Store upload metadata
+* Extract frames from video when needed
+* Send images or frames to the vision model
+* Normalize detection results
+* Apply PPE compliance rules
+* Create safety events
+* Create mock alert records
+* Return dashboard metrics
+* Generate summary prompts for Claude
+* Store generated summaries
+
+3. Vision Inference Layer
+
+The vision layer detects people and PPE-related conditions.
+
+Initial Detection Targets
+
+* person
+* helmet
+* no_helmet
+* vest
+* no_vest
+
+Preferred Model Path
+
+Use the available Qwen Vision model for PPE detection if it produces usable structured outputs.
+
+The model should return, where possible:
+
+* Label
+* Confidence
+* Bounding box
+* Frame timestamp for video
+* Short explanation of the detected condition
+
+Fallback Model Path
+
+If Qwen Vision is not reliable enough for bounding boxes or class-level PPE detection, use one of the following:
+
+* Roboflow-hosted inference API
+* YOLO model trained or exported from Roboflow PPE datasets
+* Hybrid approach:
+    * YOLO/Roboflow for detection
+    * Qwen Vision for image-level interpretation and explanation
+
+4. Detection Parser
+
+The detection parser converts raw model outputs into a normalized internal format.
+
+Normalized Detection Format
+
+type DetectionResult = {
+  id: string;
+  uploadId: string;
+  frameTimestamp?: number;
+  label: "person" | "helmet" | "no_helmet" | "vest" | "no_vest";
+  confidence: number;
+  boundingBox?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  source: "qwen_vision" | "roboflow" | "manual_mock";
+  createdAt: string;
+};
+
+5. Rule Engine
+
+The rule engine converts detections into compliance statuses and safety events.
+
+MVP Rules
+
+If person detected and helmet detected:
+  create positive observation or mark helmet compliant
+If person detected and no_helmet detected:
+  create high-severity PPE violation
+If person detected and vest detected:
+  create positive observation or mark vest compliant
+If person detected and no_vest detected:
+  create medium-severity PPE violation
+If person detected but PPE state is unclear:
+  create uncertain review event
+
+Severity Defaults
+
+no_helmet -> high
+no_vest -> medium
+uncertain_review -> low or medium
+positive_observation -> low
+
+Future Rules
+
+* Zone-specific PPE requirements
+* Confidence threshold overrides
+* Repeated violation detection
+* Location-aware escalation
+* Shift-level trend analysis
+* Supervisor approval workflows
+
+6. Safety Event Store
+
+Safety events are the core operational data object of the system.
+
+The app should store every safety-relevant observation as a structured event.
+
+type SafetyEvent = {
+  id: string;
+  uploadId: string;
+  eventType: "positive_observation" | "ppe_violation" | "uncertain_review";
+  violationType?: "no_helmet" | "no_vest";
+  severity: "low" | "medium" | "high";
+  confidence: number;
+  status: "open" | "reviewed" | "dismissed" | "resolved";
+  suggestedAction: string;
+  createdAt: string;
+};
+
+7. Mock Alert Center
+
+The alert center demonstrates how Safety Sentinel could route safety events to supervisors or approved stakeholders.
+
+The MVP should not send real alerts. Instead, it should create mock alert records stored and displayed inside the app.
+
+type AlertRecord = {
+  id: string;
+  safetyEventId: string;
+  alertType: "supervisor_review" | "coaching_reminder" | "manual_review";
+  title: string;
+  message: string;
+  status: "draft" | "queued" | "sent_mock" | "dismissed";
+  createdAt: string;
+};
+
+Alert Philosophy
+
+* Supervisor review is the default path.
+* No employee identification is used.
+* Alerts are coaching-oriented, not punitive.
+* Low-confidence events should go to manual review.
+
+8. Analytics Layer
+
+The analytics layer aggregates safety events into dashboard metrics.
+
+MVP Metrics
+
+* Overall compliance percentage
+* Total violation count
+* Violation type breakdown
+* Trend over time
+* Positive safety observations
+* Open events
+* Events by severity
+
+Compliance Percentage
+
+Suggested MVP formula:
+
+compliance_percentage =
+  positive_observations / total_safety_observations * 100
+
+Where:
+
+total_safety_observations =
+  positive_observations + ppe_violations + uncertain_review_events
+
+Alternative formula:
+
+compliance_percentage =
+  compliant_ppe_checks / total_ppe_checks * 100
+
+Use the simpler event-based calculation for the hackathon MVP.
+
+9. Claude Summary Generator
+
+The summary generator converts event and analytics data into readable safety reports.
+
+Summary Types
+
+* Daily summary
+* Weekly summary
+* Monthly summary
+
+Summary Input
+
+The backend should send Claude a structured summary object:
+
+{
+  "period": "weekly",
+  "startDate": "2026-06-22",
+  "endDate": "2026-06-28",
+  "compliancePercentage": 87,
+  "totalObservations": 248,
+  "totalViolations": 32,
+  "violationBreakdown": {
+    "no_helmet": 11,
+    "no_vest": 21
+  },
+  "severityBreakdown": {
+    "low": 4,
+    "medium": 21,
+    "high": 7
+  },
+  "trend": "Violations decreased 12% compared to the previous period."
+}
+
+Summary Output
+
+Claude should produce:
+
+* Executive summary
+* Key observations
+* Top violation types
+* Trend interpretation
+* Recommended corrective actions
+* Coaching-oriented safety reminders
+
+Suggested Backend Folder Structure
+
+backend/
+  app/
+    main.py
+    config.py
+    routes/
+      uploads.py
+      inference.py
+      events.py
+      analytics.py
+      alerts.py
+      summaries.py
+    services/
+      media_service.py
+      vision_service.py
+      detection_parser.py
+      rule_engine.py
+      analytics_service.py
+      alert_service.py
+      summary_service.py
+    models/
+      upload.py
+      detection_result.py
+      safety_event.py
+      alert_record.py
+      safety_summary.py
+    db/
+      database.py
+      repositories.py
+    utils/
+      ids.py
+      timestamps.py
+      video_frames.py
+
+Suggested Frontend Folder Structure
+
+frontend/
+  app/
+    page.tsx
+    upload/
+      page.tsx
+    results/
+      [uploadId]/
+        page.tsx
+    dashboard/
+      page.tsx
+    events/
+      page.tsx
+    alerts/
+      page.tsx
+    summaries/
+      page.tsx
+  components/
+    UploadDropzone.tsx
+    DetectionViewer.tsx
+    ComplianceScoreCard.tsx
+    ViolationBreakdownChart.tsx
+    TrendChart.tsx
+    EventTable.tsx
+    AlertCard.tsx
+    SummaryCard.tsx
+  lib/
+    api.ts
+    types.ts
+    chart-utils.ts
+
+Processing Flow
+
+Image Upload Flow
+
+1. User uploads image.
+2. Frontend sends image to FastAPI.
+3. Backend stores file and creates Upload record.
+4. Backend sends image to vision model.
+5. Vision model returns detections.
+6. Detection parser normalizes results.
+7. Rule engine creates safety events.
+8. Alert service creates mock alerts when needed.
+9. Backend returns upload, detections, events, and alerts.
+10. Frontend displays annotated image and safety results.
+
+Video Upload Flow
+
+1. User uploads video.
+2. Backend stores video and creates Upload record.
+3. Backend samples frames from the video.
+4. Each sampled frame is sent to vision model.
+5. Detections are normalized with frame timestamps.
+6. Rule engine creates safety events.
+7. Similar events may be grouped or deduplicated.
+8. Alert service creates mock alerts.
+9. Frontend displays summary results and key frames.
+
+Video Sampling Strategy
+
+For the MVP, avoid processing every frame.
+
+Recommended approach:
+
+Sample 1 frame every 1-2 seconds.
+Limit total frames per video to 20-30.
+Run inference on sampled frames.
+Aggregate repeated violations.
+
+This keeps inference fast and manageable.
+
+Data Storage Options
+
+For hackathon speed, use one of these paths:
+
+Option A: In-memory / local JSON
+
+Fastest possible. Good for demo only.
+
+Option B: SQLite
+
+Still simple and more realistic.
+
+Option C: Supabase / Postgres
+
+Best if the team already has Supabase experience and wants a more production-like backend.
+
+Recommended MVP choice:
+
+SQLite or Supabase, depending on team speed.
+
+Environment Variables
+
+# Backend
+ANTHROPIC_API_KEY=
+QWEN_VISION_API_KEY=
+ROBOFLOW_API_KEY=
+# Storage
+UPLOAD_STORAGE_PATH=./uploads
+# Frontend
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+
+Non-Goals
+
+The MVP intentionally avoids:
+
+* Facial recognition
+* Employee identity matching
+* Real-time surveillance
+* Real alert delivery
+* Automated disciplinary workflows
+* Production access control
+* Legal/compliance guarantees
+
+Future Architecture Extensions
+
+* Live camera ingestion
+* Real-time stream processing
+* Multi-site dashboards
+* Zone-specific PPE policies
+* Role-based access control
+* Human review workflows
+* Integrations with Slack, Teams, email, and SMS
+* Integration with EHS systems
+* Custom model fine-tuning per worksite
+* Edge deployment for on-premise inference
+* Audit-ready PDF exports

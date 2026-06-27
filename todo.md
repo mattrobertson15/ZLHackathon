@@ -1,0 +1,130 @@
+# Safety Sentinel — Hackathon Build Plan
+
+## Phase 1: Foundation & Infrastructure
+- [ ] Set up FastAPI backend project structure
+- [ ] Set up Next.js frontend project structure
+- [ ] Configure environment variables (.env files)
+  - `ANTHROPIC_API_KEY` for Claude summaries
+  - `QWEN_API_KEY` for vision model
+  - `UPLOAD_STORAGE_PATH` for local image/video storage
+- [ ] Create SQLite database schema (uploads, detections, safety_events, alerts, summaries)
+- [ ] Set up database ORM/query layer (SQLAlchemy or similar)
+- [ ] Create base API health check endpoint (`GET /health`)
+
+## Phase 2: Upload & Storage
+- [ ] Implement file upload handler (`POST /uploads`)
+- [ ] Store uploaded files locally (use `UPLOAD_STORAGE_PATH`)
+- [ ] Implement upload retrieval (`GET /uploads`, `GET /uploads/{upload_id}`)
+- [ ] Add video frame extraction utility (sample 1 frame per 1-2 seconds, cap at 20-30 frames)
+- [ ] Implement upload status tracking (uploaded → processing → processed → failed)
+
+## Phase 3: Vision Inference Integration
+- [ ] Integrate Qwen3-VL30B API client
+  - Detection targets: person, helmet, no_helmet, vest, no_vest
+  - Extract: label, confidence, bounding box, frame timestamp (for video)
+- [ ] Create detection parser to normalize Qwen outputs
+- [ ] Implement inference endpoint (`POST /uploads/{upload_id}/analyze`)
+- [ ] Add mock detection fallback (for demo reliability if Qwen fails)
+- [ ] Store raw detection results in database
+
+## Phase 4: Rule Engine & Safety Events
+- [ ] Implement rule engine that converts detections → safety events
+  - person + helmet → positive observation
+  - person + no_helmet → high-severity violation
+  - person + vest → positive observation
+  - person + no_vest → medium-severity violation
+  - person + unclear PPE → uncertain_review
+- [ ] Create safety event creation logic
+- [ ] Implement event retrieval (`GET /events`, `GET /events/{event_id}`)
+- [ ] Implement event status updates (`PATCH /events/{event_id}`)
+
+## Phase 5: Mock Alert Generation
+- [ ] Implement alert creation from safety events
+  - High severity → supervisor_review
+  - Medium severity → coaching_reminder
+  - Low confidence → manual_review
+- [ ] Create alert retrieval (`GET /alerts`)
+- [ ] Implement alert status updates (`PATCH /alerts/{alert_id}`)
+- [ ] Store alerts in database
+
+## Phase 6: Analytics
+- [ ] Calculate compliance percentage (positive_obs / total_observations * 100)
+- [ ] Aggregate violation breakdown (no_helmet vs no_vest counts)
+- [ ] Implement trending (daily, weekly, monthly compliance)
+- [ ] Create analytics endpoints (`GET /analytics/overview`, `GET /analytics/trends`)
+- [ ] Support period filters (daily, weekly, monthly, all)
+
+## Phase 7: AI Safety Summaries
+- [ ] Integrate Claude API client
+- [ ] Implement summary generation endpoint (`POST /summaries/generate`)
+  - Input: period, startDate, endDate
+  - Claude generates: executive summary, top violations, trend, recommended actions
+- [ ] Implement summary retrieval (`GET /summaries`, `GET /summaries/{summary_id}`)
+- [ ] Store generated summaries in database
+
+## Phase 8: Frontend - Core Pages
+- [ ] Create landing/home page (project overview)
+- [ ] Create upload page (`/upload`)
+  - Drag-and-drop file input
+  - Support image and video
+- [ ] Create results page (`/results/[uploadId]`)
+  - Display annotated detections
+  - Show safety events generated
+  - Display mock alerts
+- [ ] Create dashboard page (`/dashboard`)
+  - Compliance percentage card
+  - Violation count card
+  - Violation type breakdown (chart)
+  - Compliance trend (chart)
+- [ ] Create events page (`/events`)
+  - Event table with filters (status, severity, type)
+  - Event detail view
+
+## Phase 9: Frontend - Alerts & Summaries
+- [ ] Create alerts page (`/alerts`)
+  - Alert list with status filters
+  - Mock "send" workflow
+- [ ] Create summaries page (`/summaries`)
+  - Daily/weekly/monthly summary generator
+  - Display generated summaries
+  - Show recommended actions
+
+## Phase 10: Frontend - UI Components
+- [ ] UploadDropzone component
+- [ ] DetectionViewer component (annotated image with bounding boxes)
+- [ ] ComplianceScoreCard component
+- [ ] ViolationBreakdownChart component (Recharts)
+- [ ] TrendChart component (Recharts)
+- [ ] EventTable component
+- [ ] AlertCard component
+- [ ] SummaryCard component
+
+## Phase 11: Integration & Testing
+- [ ] Test full upload → analyze → events → alerts flow
+- [ ] Test analytics calculation with sample data
+- [ ] Test Claude summary generation with real event data
+- [ ] Test video frame extraction with sample video
+- [ ] Manual UI testing across all pages
+
+## Phase 12: Demo Preparation
+- [ ] Seed database with sample safety events for demo
+- [ ] Create demo script notes in UI
+- [ ] Test demo flow end-to-end
+- [ ] Prepare sample worksite images/videos for demo
+- [ ] Document any manual "backup" steps if Qwen inference fails
+
+## Image Dataset Storage Decision
+**Chosen: Local file storage with database references**
+- Store uploaded images locally in `UPLOAD_STORAGE_PATH` (./uploads by default)
+- Store file paths and metadata in SQLite database
+- Keep file URLs relative (e.g., `/uploads/warehouse-floor.jpg`)
+- For hackathon, this avoids cloud storage setup and API costs
+- Can be migrated to cloud storage (S3/GCS) later if needed
+- Seed demo images into ./uploads directory before demo
+
+## Notes
+- Use SQLite for simplicity (no external DB setup needed)
+- Mock alerts instead of real Slack/email delivery
+- Use Qwen3-VL30B for vision, Claude API for summaries
+- Prioritize demo flow: dashboard → upload → analyze → events → alerts → summary
+- If Qwen inference fails mid-demo, fall back to seeded detection data
