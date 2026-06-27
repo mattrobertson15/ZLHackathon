@@ -83,7 +83,7 @@ export default function UploadPage() {
                 <select
                   value={zoneId}
                   onChange={(e) => setZoneId(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">No specific zone</option>
                   {zones.map((zone) => (
@@ -109,7 +109,7 @@ export default function UploadPage() {
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Any additional context about this upload..."
                   rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             </div>

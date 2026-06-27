@@ -96,7 +96,7 @@ export default function SummariesPage() {
                   <select
                     value={period}
                     onChange={(e) => setPeriod(e.target.value as PeriodType)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 text-sm"
                   >
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
@@ -112,7 +112,7 @@ export default function SummariesPage() {
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 text-sm"
                   />
                 </div>
 
@@ -124,7 +124,7 @@ export default function SummariesPage() {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 text-sm"
                   />
                 </div>
               </div>
